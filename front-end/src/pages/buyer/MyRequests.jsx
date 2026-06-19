@@ -4,6 +4,8 @@ import { Package, MessageCircle, Clock, CheckCircle2, XCircle, ChevronRight, Map
 import { buyerApi } from "../../api/buyer";
 import { chatApi, bookingsApi } from "../../api/resources";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
+import { translateCropName } from "../../utils/cropTranslations";
 import Modal from "../../components/ui/Modal";
 import { StatusBadge } from "../../components/ui/Badge";
 import { SkeletonTable } from "../../components/ui/Skeleton";
@@ -21,6 +23,7 @@ export default function MyRequests() {
   const [bookForm, setBookForm] = useState({ delivery_address: "", payment_method: "cash" });
   const [booking, setBooking] = useState(false);
 
+  const { t, lang } = useLanguage();
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -29,7 +32,7 @@ export default function MyRequests() {
     try {
       const res = await buyerApi.getMyRequests();
       setRequests(res.data || []);
-    } catch { toast.error("Failed to load requests"); }
+    } catch { toast.error(t('error.generic')); }
     finally { setLoading(false); }
   };
 
@@ -43,7 +46,7 @@ export default function MyRequests() {
     try {
       const res = await chatApi.createConversation(farmerId);
       navigate("/chat", { state: { conversationId: res.data?.id } });
-    } catch { toast.error("Could not start chat"); }
+    } catch { toast.error(t('error.generic')); }
   };
 
   const openBook = (req) => {
@@ -53,7 +56,7 @@ export default function MyRequests() {
 
   const handleBook = async (e) => {
     e.preventDefault();
-    if (!bookForm.delivery_address.trim()) { toast.error("Delivery address required"); return; }
+    if (!bookForm.delivery_address.trim()) { toast.error(t('error.generic')); return; }
     setBooking(true);
     try {
       await bookingsApi.create({
@@ -63,26 +66,26 @@ export default function MyRequests() {
         delivery_date: new Date().toISOString(),
         payment_method: bookForm.payment_method,
       });
-      toast.success("Crop booked successfully!");
+      toast.success(t('success.generic'));
       setBookModal(null);
       load(); // Reload to update status if backend changes it
       navigate("/buyer/bookings");
-    } catch (err) { toast.error(err?.response?.data?.detail || "Booking failed"); }
+    } catch (err) { toast.error(err?.response?.data?.detail || t('error.generic')); }
     finally { setBooking(false); }
   };
 
   const tabs = [
-    { key: "all", label: "All", count: requests.length },
-    { key: "pending", label: "Pending", count: requests.filter(r=>r.status==="pending").length },
-    { key: "accepted", label: "Accepted", count: requests.filter(r=>r.status==="accepted").length },
-    { key: "rejected", label: "Rejected", count: requests.filter(r=>r.status==="rejected").length },
+    { key: "all", label: t('farmer.requests.all'), count: requests.length },
+    { key: "pending", label: t('buyer.requests.pending'), count: requests.filter(r=>r.status==="pending").length },
+    { key: "accepted", label: t('buyer.requests.accepted'), count: requests.filter(r=>r.status==="accepted").length },
+    { key: "rejected", label: t('buyer.requests.rejected'), count: requests.filter(r=>r.status==="rejected").length },
   ];
 
   return (
     <div className="page-enter space-y-6">
       <div className="page-header">
-        <h1 className="page-title">My Requests</h1>
-        <p className="page-subtitle">Track your purchase requests and book accepted ones</p>
+        <h1 className="page-title">{t('buyer.requests.title')}</h1>
+        <p className="page-subtitle">{t('buyer.requests.title')}</p>
       </div>
 
       {/* Summary cards */}
@@ -104,10 +107,10 @@ export default function MyRequests() {
         <div className="card">
           <EmptyState
             type="requests"
-            title={filter !== "all" ? `No ${filter} requests` : "No requests yet"}
-            description="Go to the marketplace to request crops from farmers."
+            title={filter !== "all" ? `No ${filter} ${t('buyer.requests.title')}` : t('buyer.requests.noRequests')}
+            description={t('buyer.requests.noRequestsDesc')}
             action={() => navigate("/buyer/marketplace")}
-            actionLabel="Browse Marketplace"
+            actionLabel={t('nav.marketplace')}
           />
         </div>
       ) : (
@@ -115,13 +118,13 @@ export default function MyRequests() {
           <table className="w-full text-sm">
             <thead className="table-header">
               <tr className="text-xs text-slate-500 uppercase tracking-wider">
-                <th className="text-left px-5 py-3 font-semibold">Crop</th>
-                <th className="text-left px-4 py-3 font-semibold">Farmer</th>
-                <th className="text-left px-4 py-3 font-semibold">Quantity</th>
-                <th className="text-left px-4 py-3 font-semibold">Proposed Price</th>
-                <th className="text-left px-4 py-3 font-semibold">Date</th>
-                <th className="text-left px-4 py-3 font-semibold">Status</th>
-                <th className="text-left px-4 py-3 font-semibold">Actions</th>
+                <th className="text-left px-5 py-3 font-semibold">{t('crop.name')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('role.farmer')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('crop.quantity')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('buyer.marketplace.proposedPrice')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('crop.harvestDate')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('common.status')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -132,11 +135,11 @@ export default function MyRequests() {
                       <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
                         <Package size={14} className="text-green-600" />
                       </div>
-                      <p className="font-semibold text-slate-800">{req.crop_name || req.crops?.name || "Crop"}</p>
+                      <p className="font-semibold text-slate-800">{translateCropName(req.crop_name || req.crops?.name || "", lang) || t('crop.name')}</p>
                     </div>
                   </td>
-                  <td className="px-4 py-4 text-slate-700">{req.farmer_name || req["users!farmer_id"]?.name || "Farmer"}</td>
-                  <td className="px-4 py-4 text-slate-700 font-medium">{req.quantity} units</td>
+                  <td className="px-4 py-4 text-slate-700">{req.farmer_name || req["users!farmer_id"]?.name || t('role.farmer')}</td>
+                  <td className="px-4 py-4 text-slate-700 font-medium">{req.quantity} {t('crop.unit')}</td>
                   <td className="px-4 py-4 font-semibold text-slate-900">
                     {req.proposed_price ? `₹${req.proposed_price}` : <span className="text-slate-400 font-normal text-xs">Standard</span>}
                   </td>
@@ -171,30 +174,30 @@ export default function MyRequests() {
       <Modal
         open={!!bookModal}
         onClose={() => setBookModal(null)}
-        title="Confirm Booking"
-        subtitle={`Finalize booking for ${bookModal?.crop_name || "Crop"}`}
+        title={t('buyer.bookings.title')}
+        subtitle={bookModal?.crop_name || t('crop.name')}
         size="md"
       >
         {bookModal && (
           <form onSubmit={handleBook} className="space-y-4">
             <div className="bg-blue-50 rounded-xl p-4 mb-4 border border-blue-100">
-              <h3 className="font-bold text-blue-900 mb-2">Order Summary</h3>
+              <h3 className="font-bold text-blue-900 mb-2">{t('farmer.bookings.title')}</h3>
               <div className="space-y-1 text-sm text-blue-800">
-                <div className="flex justify-between"><p>Crop</p> <p className="font-semibold">{bookModal.crop_name || bookModal.crops?.name}</p></div>
-                <div className="flex justify-between"><p>Quantity</p> <p className="font-semibold">{bookModal.quantity} units</p></div>
+                <div className="flex justify-between"><p>{t('crop.name')}</p> <p className="font-semibold">{bookModal.crop_name || bookModal.crops?.name}</p></div>
+                <div className="flex justify-between"><p>{t('crop.quantity')}</p> <p className="font-semibold">{bookModal.quantity} {t('crop.unit')}</p></div>
                 {bookModal.proposed_price && (
-                  <div className="flex justify-between"><p>Price/Unit</p> <p className="font-semibold">₹{bookModal.proposed_price}</p></div>
+                  <div className="flex justify-between"><p>{t('crop.pricePerUnit')}</p> <p className="font-semibold">₹{bookModal.proposed_price}</p></div>
                 )}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Delivery Address <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('crop.location')} <span className="text-red-500">*</span></label>
               <div className="relative">
                 <MapPin size={15} className="absolute left-3 top-3 text-slate-400" />
                 <textarea
                   value={bookForm.delivery_address} onChange={e => setBookForm(f => ({ ...f, delivery_address: e.target.value }))}
-                  rows={3} placeholder="Full address with pin code"
+                  rows={3} placeholder={t('crop.location')}
                   className="input-field pl-9 resize-none" required
                 />
               </div>
@@ -209,9 +212,9 @@ export default function MyRequests() {
             </div>
 
             <div className="flex gap-3 pt-2 justify-end border-t border-slate-100">
-              <button type="button" onClick={() => setBookModal(null)} className="btn btn-secondary">Cancel</button>
+              <button type="button" onClick={() => setBookModal(null)} className="btn btn-secondary">{t('common.cancel')}</button>
               <button type="submit" disabled={booking} className="btn btn-primary">
-                {booking ? "Booking..." : "Confirm Booking"}
+                {booking ? t('common.saving') : t('common.confirm')}
               </button>
             </div>
           </form>

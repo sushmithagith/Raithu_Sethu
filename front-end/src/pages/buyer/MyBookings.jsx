@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Package, MapPin, CreditCard, Calendar, Truck, CheckCircle2 } from "lucide-react";
 import { bookingsApi } from "../../api/resources";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
+import { translateCropName } from "../../utils/cropTranslations";
 import { StatusBadge } from "../../components/ui/Badge";
 import { SkeletonTable } from "../../components/ui/Skeleton";
 import EmptyState from "../../components/ui/EmptyState";
@@ -11,6 +13,7 @@ export default function BuyerBookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const { t, lang } = useLanguage();
   const toast = useToast();
 
   const load = async () => {
@@ -18,7 +21,7 @@ export default function BuyerBookings() {
     try {
       const res = await bookingsApi.getAll();
       setBookings(res.data || []);
-    } catch { toast.error("Failed to load bookings"); }
+    } catch { toast.error(t('error.generic')); }
     finally { setLoading(false); }
   };
 
@@ -27,16 +30,16 @@ export default function BuyerBookings() {
   const filtered = filter === "all" ? bookings : bookings.filter(b => b.status === filter);
 
   const tabs = [
-    { key: "all", label: "All" },
-    { key: "confirmed", label: "Confirmed" },
-    { key: "completed", label: "Completed" },
+    { key: "all", label: t('farmer.requests.all') },
+    { key: "confirmed", label: t('farmer.bookings.confirmed') },
+    { key: "completed", label: t('farmer.bookings.completed') },
   ];
 
   return (
     <div className="page-enter space-y-6">
       <div className="page-header">
-        <h1 className="page-title">My Bookings</h1>
-        <p className="page-subtitle">Track your purchased crops and delivery status</p>
+        <h1 className="page-title">{t('buyer.bookings.title')}</h1>
+        <p className="page-subtitle">{t('buyer.bookings.title')}</p>
       </div>
 
       <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
@@ -54,8 +57,8 @@ export default function BuyerBookings() {
         <div className="card">
           <EmptyState
             type="requests"
-            title={filter !== "all" ? `No ${filter} bookings` : "No bookings yet"}
-            description="Bookings will appear here after you book an accepted purchase request."
+            title={filter !== "all" ? `No ${filter} ${t('buyer.bookings.title')}` : t('buyer.bookings.noBookings')}
+            description={t('buyer.requests.noRequestsDesc')}
           />
         </div>
       ) : (
@@ -63,13 +66,13 @@ export default function BuyerBookings() {
           <table className="w-full text-sm">
             <thead className="table-header">
               <tr className="text-xs text-slate-500 uppercase tracking-wider">
-                <th className="text-left px-5 py-3 font-semibold">Crop & Farmer</th>
-                <th className="text-left px-4 py-3 font-semibold">Quantity</th>
-                <th className="text-left px-4 py-3 font-semibold">Total Paid</th>
-                <th className="text-left px-4 py-3 font-semibold">Payment Method</th>
-                <th className="text-left px-4 py-3 font-semibold">Delivery To</th>
-                <th className="text-left px-4 py-3 font-semibold">Date</th>
-                <th className="text-left px-4 py-3 font-semibold">Status</th>
+                <th className="text-left px-5 py-3 font-semibold">{t('crop.name')} & {t('role.farmer')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('crop.quantity')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('crop.price')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('crop.price')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('crop.location')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('crop.harvestDate')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('common.status')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -81,12 +84,12 @@ export default function BuyerBookings() {
                         <Package size={15} className="text-blue-600" />
                       </div>
                       <div>
-                        <p className="font-semibold text-slate-800">{booking.crops?.name || "Crop"}</p>
-                        <p className="text-xs text-slate-500">From: Farmer #{booking.crops?.farmer_id || "Unknown"}</p>
+                        <p className="font-semibold text-slate-800">{translateCropName(booking.crops?.name || "", lang) || t('crop.name')}</p>
+                        <p className="text-xs text-slate-500">From: {t('role.farmer')} #{booking.crops?.farmer_id || t('common.noData')}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-4 text-slate-700 font-medium">{booking.quantity} {booking.crops?.unit || "units"}</td>
+                  <td className="px-4 py-4 text-slate-700 font-medium">{booking.quantity} {booking.crops?.unit || t('crop.unit')}</td>
                   <td className="px-4 py-4 font-bold text-slate-900">₹{booking.total_price?.toLocaleString()}</td>
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-1.5 text-slate-600 text-xs uppercase font-semibold">
@@ -106,7 +109,7 @@ export default function BuyerBookings() {
                   <td className="px-4 py-4">
                     {booking.status === "completed" ? (
                       <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
-                        <CheckCircle2 size={12} /> Delivered
+                        <CheckCircle2 size={12} /> {t('farmer.bookings.completed')}
                       </span>
                     ) : (
                       <StatusBadge status={booking.status} />

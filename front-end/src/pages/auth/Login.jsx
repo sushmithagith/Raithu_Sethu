@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Leaf, Mail, Lock, Eye, EyeOff, Sprout, ShoppingBag, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
 
 const ROLE_CONFIG = {
   farmer: {
@@ -30,6 +31,7 @@ export default function Login() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const { t } = useLanguage();
   const { login } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
@@ -38,15 +40,15 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) { toast.error("Please fill in all fields"); return; }
+    if (!email || !password) { toast.error(t('error.generic')); return; }
     setLoading(true);
     try {
       const user = await login(role, { email, password });
-      toast.success(`Welcome back, ${user.name?.split(" ")[0] || "there"}!`);
+      toast.success(t('auth.loginSuccess'));
       const redirect = from || (user.role === "farmer" ? "/farmer/dashboard" : user.role === "admin" ? "/admin" : "/buyer/marketplace");
       navigate(redirect, { replace: true });
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Invalid credentials. Please try again.");
+      toast.error(err?.response?.data?.detail || t('auth.invalidCredentials'));
     } finally {
       setLoading(false);
     }
@@ -126,8 +128,8 @@ export default function Login() {
             <span className="font-bold text-xl text-slate-800">RaithuSethu</span>
           </div>
 
-          <h2 className="text-2xl font-bold text-slate-900 mb-1">Welcome back</h2>
-          <p className="text-slate-500 text-sm mb-8">Sign in to continue to your dashboard</p>
+          <h2 className="text-2xl font-bold text-slate-900 mb-1">{t('auth.login')}</h2>
+          <p className="text-slate-500 text-sm mb-8">{t('auth.login')}</p>
 
           {/* Role Selector */}
           <div className="grid grid-cols-2 gap-3 mb-8">
@@ -146,7 +148,7 @@ export default function Login() {
                   <div className={`w-8 h-8 rounded-lg ${isActive ? "bg-green-500" : "bg-slate-100"} flex items-center justify-center mb-2 transition-colors`}>
                     <Icon size={16} className={isActive ? "text-white" : "text-slate-500"} />
                   </div>
-                  <p className={`text-sm font-semibold ${isActive ? "text-green-700" : "text-slate-700"}`}>{cfg.label}</p>
+                  <p className={`text-sm font-semibold ${isActive ? "text-green-700" : "text-slate-700"}`}>{t('role.' + r)}</p>
                   <p className={`text-xs mt-0.5 ${isActive ? "text-green-600" : "text-slate-500"}`}>{cfg.subtitle}</p>
                   {isActive && <CheckCircle2 size={14} className="absolute top-3 right-3 text-green-500" />}
                 </button>
@@ -157,26 +159,26 @@ export default function Login() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email address</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('auth.email')}</label>
               <div className="relative">
                 <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="input-field pl-9"
-                  autoComplete="email"
-                  required
-                />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder={t('auth.email')}
+                    className="input-field pl-9"
+                    autoComplete="email"
+                    required
+                  />
               </div>
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <label className="block text-sm font-semibold text-slate-700">Password</label>
+                <label className="block text-sm font-semibold text-slate-700">{t('auth.password')}</label>
                 <Link to="/forgot-password" className="text-xs text-green-600 hover:text-green-700 font-medium">
-                  Forgot password?
+                  {t('auth.forgotPassword')}
                 </Link>
               </div>
               <div className="relative">
@@ -185,7 +187,7 @@ export default function Login() {
                   type={showPw ? "text" : "password"}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="Your password"
+                  placeholder={t('auth.password')}
                   className="input-field pl-9 pr-10"
                   autoComplete="current-password"
                   required
@@ -205,19 +207,18 @@ export default function Login() {
               disabled={loading}
               className="btn btn-primary w-full btn-lg mt-2"
             >
-              {loading ? "Signing in..." : (
+              {loading ? t('common.loading') : (
                 <>
-                  Sign in as {rc.label}
-                  <ArrowRight size={16} />
+                  {t('auth.login')} <ArrowRight size={16} />
                 </>
               )}
             </button>
           </form>
 
           <p className="text-center text-sm text-slate-500 mt-6">
-            Don't have an account?{" "}
+            {t('auth.noAccount')}{" "}
             <Link to="/register" className="text-green-600 font-semibold hover:text-green-700">
-              Create account
+              {t('auth.register')}
             </Link>
           </p>
         </div>

@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
-import { Plus, Edit2, Trash2, Calendar, MapPin, DollarSign, Package, MessageCircle, User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus, Edit2, Trash2, Calendar, MapPin, DollarSign, Package, MessageCircle, User, CheckCircle } from "lucide-react";
 import { buyerApi } from "../../api/buyer";
+import { chatApi } from "../../api/resources";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
+import { translateCropName } from "../../utils/cropTranslations";
 import Modal, { ConfirmModal } from "../../components/ui/Modal";
 import { CategoryBadge, StatusBadge } from "../../components/ui/Badge";
 import Spinner from "../../components/ui/Spinner";
@@ -17,6 +21,7 @@ const EMPTY_FORM = {
 };
 
 export default function BuyerRequirements() {
+  const navigate = useNavigate();
   const [requirements, setRequirements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -27,6 +32,8 @@ export default function BuyerRequirements() {
   const [viewResponses, setViewResponses] = useState(null);
   const [responses, setResponses] = useState([]);
   const [responsesLoading, setResponsesLoading] = useState(false);
+  const [acceptingId, setAcceptingId] = useState(null);
+  const { t, lang } = useLanguage();
   const toast = useToast();
 
   const load = async () => {
@@ -34,7 +41,7 @@ export default function BuyerRequirements() {
     try {
       const res = await buyerApi.getMyRequirements();
       setRequirements(res.data || []);
-    } catch { toast.error("Failed to load requirements"); }
+    } catch { toast.error(t('error.generic')); }
     finally { setLoading(false); }
   };
 
@@ -64,14 +71,14 @@ export default function BuyerRequirements() {
       };
       if (editReq) {
         await buyerApi.updateRequirement(editReq.id, payload);
-        toast.success("Requirement updated");
+        toast.success(t('buyer.requirements.saveSuccess'));
       } else {
         await buyerApi.createRequirement(payload);
-        toast.success("Requirement posted to all farmers!");
+        toast.success(t('buyer.requirements.saveSuccess'));
       }
       setModalOpen(false);
       load();
-    } catch (err) { toast.error(err?.response?.data?.detail || "Failed to save requirement"); }
+    } catch (err) { toast.error(err?.response?.data?.detail || t('buyer.requirements.saveFailed')); }
     finally { setSaving(false); }
   };
 
@@ -79,10 +86,10 @@ export default function BuyerRequirements() {
     if (!deleteTarget) return;
     try {
       await buyerApi.deleteRequirement(deleteTarget.id);
-      toast.success("Requirement deleted");
+      toast.success(t('buyer.requirements.saveSuccess'));
       setDeleteTarget(null);
       load();
-    } catch { toast.error("Failed to delete requirement"); }
+    } catch { toast.error(t('error.generic')); }
   };
 
   const handleViewResponses = async (req) => {
@@ -92,19 +99,38 @@ export default function BuyerRequirements() {
       const res = await buyerApi.getRequirementResponses();
       const filtered = (res.data || []).filter(r => r.requirement_id === req.id);
       setResponses(filtered);
-    } catch { toast.error("Failed to load responses"); setResponses([]); }
+    } catch { toast.error(t('error.generic')); setResponses([]); }
     finally { setResponsesLoading(false); }
+  };
+
+  const handleAcceptResponse = async (responseId) => {
+    setAcceptingId(responseId);
+    try {
+      await buyerApi.acceptRequirementResponse(responseId);
+      toast.success(t('success.generic'));
+      setViewResponses(null);
+      setResponses([]);
+      load();
+    } catch (err) { toast.error(err?.response?.data?.detail || t('error.generic')); }
+    finally { setAcceptingId(null); }
+  };
+
+  const handleChatWithFarmer = async (farmerId) => {
+    try {
+      const res = await chatApi.createConversation(farmerId);
+      navigate("/chat", { state: { conversationId: res.data?.id } });
+    } catch { toast.error(t('error.generic')); }
   };
 
   return (
     <div className="page-enter space-y-6">
       <div className="page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="page-title">My Requirements</h1>
-          <p className="page-subtitle">Post bulk needs to let farmers come to you</p>
+          <h1 className="page-title">{t('buyer.requirements.title')}</h1>
+          <p className="page-subtitle">{t('buyer.requirements.title')}</p>
         </div>
         <button onClick={openAdd} className="btn btn-primary">
-          <Plus size={16} /> Post Requirement
+          <Plus size={16} /> {t('buyer.requirements.create')}
         </button>
       </div>
 
@@ -116,10 +142,10 @@ export default function BuyerRequirements() {
         <div className="card">
           <EmptyState
             type="requests"
-            title="No requirements posted"
-            description="Can't find what you need in the marketplace? Post a requirement and let farmers bid."
+            title={t('buyer.requirements.noRequirements')}
+            description={t('buyer.requirements.requirementsDesc')}
             action={openAdd}
-            actionLabel="Post Requirement"
+            actionLabel={t('buyer.requirements.create')}
           />
         </div>
       ) : (
@@ -128,7 +154,7 @@ export default function BuyerRequirements() {
             <div key={req.id} className="card p-5 animate-fade-in" style={{ animationDelay: `${i * 60}ms` }}>
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="font-bold text-slate-900 text-lg">{req.crop_name}</h3>
+                  <h3 className="font-bold text-slate-900 text-lg">{translateCropName(req.crop_name, lang)}</h3>
                   <div className="flex gap-2 mt-1.5">
                     <CategoryBadge category={req.category} />
                     <StatusBadge status={req.status} />
@@ -139,11 +165,11 @@ export default function BuyerRequirements() {
               <div className="space-y-2 mb-5">
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                   <Package size={14} className="text-slate-400" />
-                  <span><strong>{req.quantity} {req.unit}</strong> required</span>
+                  <span><strong>{req.quantity} {req.unit}</strong> {t('common.required')}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                   <DollarSign size={14} className="text-slate-400" />
-                  <span>Max budget: <strong className="text-green-700">₹{req.max_price}/{req.unit}</strong></span>
+                  <span>{t('buyer.requirements.targetPrice')}: <strong className="text-green-700">₹{req.max_price}/{req.unit}</strong></span>
                 </div>
                 {req.location && (
                   <div className="flex items-center gap-2 text-sm text-slate-600">
@@ -154,7 +180,7 @@ export default function BuyerRequirements() {
                 {req.required_by && (
                   <div className="flex items-center gap-2 text-sm text-slate-600">
                     <Calendar size={14} className="text-slate-400" />
-                    <span>Needed by: {format(parseISO(req.required_by), "dd MMM yyyy")}</span>
+                    <span>{t('buyer.requirements.deadline')}: {format(parseISO(req.required_by), "dd MMM yyyy")}</span>
                   </div>
                 )}
               </div>
@@ -165,7 +191,7 @@ export default function BuyerRequirements() {
 
               <div className="flex gap-2 pt-4 border-t border-slate-100">
                 <button onClick={() => handleViewResponses(req)} className="btn btn-secondary flex-1 btn-sm">
-                  <MessageCircle size={13} /> Responses
+                  <MessageCircle size={13} /> {t('buyer.requirements.viewResponses')}
                 </button>
                 <button onClick={() => openEdit(req)} className="btn btn-secondary btn-icon btn-sm">
                   <Edit2 size={13} />
@@ -181,56 +207,56 @@ export default function BuyerRequirements() {
 
       <Modal
         open={modalOpen} onClose={() => setModalOpen(false)}
-        title={editReq ? "Edit Requirement" : "Post New Requirement"}
-        subtitle="Farmers will see this and can respond with their crops"
+        title={editReq ? t('buyer.requirements.edit') : t('buyer.requirements.create')}
+        subtitle={t('buyer.requirements.title')}
         size="md"
       >
         <form onSubmit={handleSave} className="space-y-4">
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Crop Name <span className="text-red-500">*</span></label>
-              <input type="text" value={form.crop_name} onChange={e => setForm(f => ({ ...f, crop_name: e.target.value }))} placeholder="e.g. Potatoes" className="input-field" required />
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('buyer.requirements.cropName')} <span className="text-red-500">*</span></label>
+              <input type="text" value={form.crop_name} onChange={e => setForm(f => ({ ...f, crop_name: e.target.value }))} placeholder={t('crop.name')} className="input-field" required />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Category</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('crop.category')}</label>
               <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="input-field">
-                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                {CATEGORIES.map(c => <option key={c} value={c}>{t('crop.category.' + c.toLowerCase())}</option>)}
               </select>
             </div>
           </div>
           <div className="grid sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Qty <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('crop.quantity')} <span className="text-red-500">*</span></label>
               <input type="number" min="1" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} className="input-field" required />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Unit</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('crop.unit')}</label>
               <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} className="input-field">
-                <option>kg</option><option>ton</option><option>quintal</option>
+                <option value="kg">{t('crop.unit.kg')}</option><option value="ton">{t('crop.unit.ton')}</option><option value="quintal">{t('crop.unit.quintal')}</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Max ₹/Unit <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('buyer.requirements.targetPrice')} <span className="text-red-500">*</span></label>
               <input type="number" min="0.1" step="0.1" value={form.max_price} onChange={e => setForm(f => ({ ...f, max_price: e.target.value }))} className="input-field" required />
             </div>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Location Pref.</label>
-              <input type="text" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="e.g. Any, or Guntur" className="input-field" />
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('crop.location')}</label>
+              <input type="text" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder={t('crop.location')} className="input-field" />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Needed By</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('buyer.requirements.deadline')}</label>
               <input type="date" value={form.required_by} onChange={e => setForm(f => ({ ...f, required_by: e.target.value }))} className="input-field" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Description</label>
-            <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} placeholder="Quality expectations, transport terms..." className="input-field resize-none" />
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('crop.description')}</label>
+            <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} placeholder={t('crop.description')} className="input-field resize-none" />
           </div>
           <div className="flex gap-3 pt-2 justify-end border-t border-slate-100">
-            <button type="button" onClick={() => setModalOpen(false)} className="btn btn-secondary">Cancel</button>
-            <button type="submit" disabled={saving} className="btn btn-primary">{saving ? "Saving..." : "Post Requirement"}</button>
+            <button type="button" onClick={() => setModalOpen(false)} className="btn btn-secondary">{t('common.cancel')}</button>
+            <button type="submit" disabled={saving} className="btn btn-primary">{saving ? t('common.saving') : t('buyer.requirements.create')}</button>
           </div>
         </form>
       </Modal>
@@ -239,14 +265,14 @@ export default function BuyerRequirements() {
       <Modal
         open={!!viewResponses}
         onClose={() => { setViewResponses(null); setResponses([]); }}
-        title="Farmer Responses"
-        subtitle={viewResponses ? `Responses for "${viewResponses.crop_name}"` : ""}
+        title={t('buyer.requirements.viewResponses')}
+        subtitle={viewResponses ? translateCropName(viewResponses.crop_name, lang) : ""}
         size="md"
       >
         {responsesLoading ? (
           <div className="flex justify-center p-8"><Spinner /></div>
         ) : responses.length === 0 ? (
-          <div className="text-center p-8 text-slate-500 text-sm">No responses yet from farmers.</div>
+          <div className="text-center p-8 text-slate-500 text-sm">{t('buyer.requirements.noResponses')}</div>
         ) : (
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {responses.map(r => (
@@ -258,25 +284,41 @@ export default function BuyerRequirements() {
                   <span className="font-semibold text-sm text-slate-800">{r.farmer?.name || "Farmer"}</span>
                 </div>
                 <div className="text-sm text-slate-600 space-y-1">
-                  <p>Offered price: <strong className="text-green-700">₹{r.offered_price}</strong></p>
+                  <p>{t('buyer.requirements.offeredPrice')}: <strong className="text-green-700">₹{r.offered_price}</strong></p>
                   {r.message && <p className="text-xs text-slate-500 bg-white rounded-lg p-2 mt-1">{r.message}</p>}
                 </div>
                 <p className="text-xs text-slate-400 mt-2">
                   {r.created_at ? format(parseISO(r.created_at), "dd MMM yyyy, HH:mm") : ""}
                 </p>
+                <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                  <button
+                    onClick={() => handleAcceptResponse(r.id)}
+                    disabled={acceptingId === r.id}
+                    className="btn btn-primary btn-sm flex-1"
+                  >
+                    {acceptingId === r.id ? t('common.loading') : <><CheckCircle size={13} /> Accept</>}
+                  </button>
+                  <button
+                    onClick={() => handleChatWithFarmer(r.farmer_id)}
+                    className="btn btn-secondary btn-sm"
+                    title={t('chat.title')}
+                  >
+                    <MessageCircle size={14} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
         <div className="flex justify-end pt-4 border-t border-slate-100 mt-4">
-          <button onClick={() => { setViewResponses(null); setResponses([]); }} className="btn btn-secondary">Close</button>
+          <button onClick={() => { setViewResponses(null); setResponses([]); }} className="btn btn-secondary">{t('common.close')}</button>
         </div>
       </Modal>
 
       <ConfirmModal
         open={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDelete}
-        title="Delete Requirement" description="Are you sure? Farmers will no longer see this requirement."
-        confirmLabel="Delete" confirmVariant="danger"
+        title={t('common.delete')} description={t('buyer.requirements.deleteConfirm')}
+        confirmLabel={t('common.delete')} confirmVariant="danger"
       />
     </div>
   );

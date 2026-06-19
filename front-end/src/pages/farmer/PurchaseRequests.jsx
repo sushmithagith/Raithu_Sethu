@@ -3,6 +3,8 @@ import { CheckCircle2, XCircle, MessageCircle, User, Package, Clock, Filter } fr
 import { farmerApi } from "../../api/farmer";
 import { chatApi } from "../../api/resources";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
+import { translateCropName } from "../../utils/cropTranslations";
 import { useNavigate } from "react-router-dom";
 import { StatusBadge } from "../../components/ui/Badge";
 import { SkeletonTable } from "../../components/ui/Skeleton";
@@ -16,6 +18,7 @@ export default function PurchaseRequests() {
   const [actionLoading, setActionLoading] = useState({});
   const [filter, setFilter] = useState("all");
   const toast = useToast();
+  const { t, lang } = useLanguage();
   const navigate = useNavigate();
 
   const load = async () => {
@@ -23,7 +26,7 @@ export default function PurchaseRequests() {
     try {
       const res = await farmerApi.getPurchaseRequests();
       setRequests(res.data || []);
-    } catch { toast.error("Failed to load requests"); }
+    } catch { toast.error(t('error.generic')); }
     finally { setLoading(false); }
   };
 
@@ -37,9 +40,9 @@ export default function PurchaseRequests() {
     setActionLoading(a => ({ ...a, [id]: "accept" }));
     try {
       await farmerApi.acceptRequest(id);
-      toast.success("Request accepted!");
+      toast.success(t('farmer.requests.accepted'));
       load();
-    } catch (err) { toast.error(err?.response?.data?.detail || "Failed to accept"); }
+    } catch (err) { toast.error(err?.response?.data?.detail || t('error.generic')); }
     finally { setActionLoading(a => ({ ...a, [id]: null })); }
   };
 
@@ -47,9 +50,9 @@ export default function PurchaseRequests() {
     setActionLoading(a => ({ ...a, [id]: "reject" }));
     try {
       await farmerApi.rejectRequest(id);
-      toast.success("Request rejected");
+      toast.success(t('farmer.requests.rejected'));
       load();
-    } catch (err) { toast.error(err?.response?.data?.detail || "Failed to reject"); }
+    } catch (err) { toast.error(err?.response?.data?.detail || t('error.generic')); }
     finally { setActionLoading(a => ({ ...a, [id]: null })); }
   };
 
@@ -57,20 +60,20 @@ export default function PurchaseRequests() {
     try {
       const res = await chatApi.createConversation(buyerId);
       navigate("/chat", { state: { conversationId: res.data?.id } });
-    } catch { toast.error("Could not start chat"); }
+    } catch { toast.error(t('error.generic')); }
   };
 
   const tabs = [
-    { key: "all", label: "All", count: requests.length },
-    { key: "pending", label: "Pending", count: requests.filter(r=>r.status==="pending").length },
-    { key: "accepted", label: "Accepted", count: requests.filter(r=>r.status==="accepted").length },
-    { key: "rejected", label: "Rejected", count: requests.filter(r=>r.status==="rejected").length },
+    { key: "all", label: t('farmer.requests.all'), count: requests.length },
+    { key: "pending", label: t('farmer.requests.pending'), count: requests.filter(r=>r.status==="pending").length },
+    { key: "accepted", label: t('farmer.requests.accepted'), count: requests.filter(r=>r.status==="accepted").length },
+    { key: "rejected", label: t('farmer.requests.rejected'), count: requests.filter(r=>r.status==="rejected").length },
   ];
 
   return (
     <div className="page-enter space-y-6">
       <div className="page-header">
-        <h1 className="page-title">Purchase Requests</h1>
+        <h1 className="page-title">{t('farmer.requests.title')}</h1>
         <p className="page-subtitle">Review and respond to buyer purchase requests for your crops</p>
       </div>
 
@@ -94,8 +97,8 @@ export default function PurchaseRequests() {
         <div className="card">
           <EmptyState
             type="requests"
-            title={filter !== "all" ? `No ${filter} requests` : "No purchase requests yet"}
-            description={filter !== "all" ? `Switch to 'All' to see all requests` : "When buyers request your crops, they'll appear here."}
+            title={filter !== "all" ? `No ${filter} requests` : t('farmer.requests.noRequests')}
+            description={filter !== "all" ? `Switch to 'All' to see all requests` : t('farmer.requests.noRequestsDesc')}
           />
         </div>
       ) : (
@@ -103,14 +106,14 @@ export default function PurchaseRequests() {
           <table className="w-full text-sm">
             <thead className="table-header">
               <tr className="text-xs text-slate-500 uppercase tracking-wider">
-                <th className="text-left px-5 py-3 font-semibold">Buyer</th>
-                <th className="text-left px-4 py-3 font-semibold">Crop</th>
-                <th className="text-left px-4 py-3 font-semibold">Quantity</th>
-                <th className="text-left px-4 py-3 font-semibold">Proposed Price</th>
-                <th className="text-left px-4 py-3 font-semibold">Message</th>
-                <th className="text-left px-4 py-3 font-semibold">Date</th>
-                <th className="text-left px-4 py-3 font-semibold">Status</th>
-                <th className="text-left px-4 py-3 font-semibold">Actions</th>
+                <th className="text-left px-5 py-3 font-semibold">{t('role.buyer')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('crop.name')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('crop.quantity')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('crop.price')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('crop.description')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('crop.harvestDate')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('crop.status')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -128,7 +131,7 @@ export default function PurchaseRequests() {
                     </div>
                   </td>
                   <td className="px-4 py-4">
-                    <p className="font-medium text-slate-800">{req.crop_name || req.crops?.name || "—"}</p>
+                    <p className="font-medium text-slate-800">{translateCropName(req.crop_name || req.crops?.name || "", lang) || "—"}</p>
                   </td>
                   <td className="px-4 py-4 text-slate-700">{req.quantity} units</td>
                   <td className="px-4 py-4 font-semibold text-slate-800">
@@ -164,7 +167,7 @@ export default function PurchaseRequests() {
                       <button
                         onClick={() => handleChat(req["users!buyer_id"]?.id || req.buyer_id)}
                         className="btn btn-secondary btn-sm btn-icon"
-                        title="Chat with buyer"
+                        title={t('chat.title')}
                       >
                         <MessageCircle size={13} />
                       </button>

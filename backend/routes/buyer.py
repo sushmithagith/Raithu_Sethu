@@ -61,6 +61,21 @@ async def request_crop(body: PurchaseRequestCreate, current_user: dict = Depends
         raise HTTPException(status_code=404, detail="Crop not found or unavailable")
 
     c = crop.data[0]
+
+    # Validate requested quantity does not exceed available
+    if body.quantity > c["quantity"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Requested quantity ({body.quantity}) exceeds available stock ({c['quantity']})",
+        )
+
+    # Validate proposed price does not exceed listed price
+    if body.proposed_price is not None and body.proposed_price > c["price_per_unit"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Proposed price (₹{body.proposed_price}) cannot exceed the listed price (₹{c['price_per_unit']})",
+        )
+
     purchase_request = {
         "id": str(uuid.uuid4()),
         "crop_id": body.crop_id,
@@ -133,6 +148,7 @@ async def get_my_requirements(current_user: dict = Depends(require_buyer)):
         supabase.table("buyer_requirements")
         .select("*")
         .eq("buyer_id", current_user["sub"])
+        .eq("is_active", True)
         .order("created_at", desc=True)
         .execute()
     )
@@ -205,3 +221,32 @@ async def get_requirement_responses(current_user: dict = Depends(require_buyer))
         .execute()
     )
     return responses.data or []
+
+
+# ── Accept a Farmer's Response to a Requirement ──────────
+@router.post("/buyer/requirements/accept-response/{response_id}")
+async def accept_requirement_response(
+    response_id: str, current_user: dict = Depends(require_buyer)
+):
+    supabase = get_supabase()
+    # Get the response
+    resp = (
+        supabase.table("requirement_responses")
+        .select("*, requirement:requirement_id(*)")
+        .eq("id", response_id)
+        .execute()
+    )
+    if not resp.data:
+        raise HTTPException(status_code=404, detail="Response not found")
+
+    r = resp.data[0]
+    req = r.get("requirement") or {}
+
+    # Verify the requirement belongs to this buyer
+    if req.get("buyer_id") != current_user["sub"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Mark the requirement as inactive (removes from both dashboards)
+    supabase.table("buyer_requirements").update({"is_active": False}).eq("id", r["requirement_id"]).execute()
+
+    return {"message": "Response accepted, requirement removed from dashboards"}

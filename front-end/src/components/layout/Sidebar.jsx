@@ -1,46 +1,21 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useCallback, useMemo } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Sprout, ShoppingBag, FileText, ClipboardList,
   BookOpen, Zap, MessageCircle, Bell, LogOut,
-  Users, BarChart3, Store, X, Menu, Leaf,
+  Users, BarChart3, Store, X, Leaf,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { useNotifications } from "../../context/NotificationContext";
-
-const NAV_FARMER = [
-  { to: "/farmer/dashboard",    icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/farmer/crops",        icon: Sprout,          label: "My Crops" },
-  { to: "/farmer/requests",     icon: ShoppingBag,     label: "Purchase Requests" },
-  { to: "/farmer/requirements", icon: ClipboardList,   label: "Buyer Needs" },
-  { to: "/farmer/bookings",     icon: BookOpen,        label: "My Bookings" },
-  { to: "/farmer/flash-sales",  icon: Zap,             label: "Flash Sales" },
-];
-
-const NAV_BUYER = [
-  { to: "/buyer/marketplace",   icon: Store,           label: "Marketplace" },
-  { to: "/buyer/requests",      icon: FileText,        label: "My Requests" },
-  { to: "/buyer/requirements",  icon: ClipboardList,   label: "My Requirements" },
-  { to: "/buyer/bookings",      icon: BookOpen,        label: "My Bookings" },
-];
-
-const NAV_ADMIN = [
-  { to: "/admin",               icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/admin/farmers",       icon: Sprout,          label: "Farmers" },
-  { to: "/admin/buyers",        icon: Users,           label: "Buyers" },
-  { to: "/admin/analytics",     icon: BarChart3,       label: "Analytics" },
-];
-
-const NAV_SHARED = [
-  { to: "/chat",                icon: MessageCircle,   label: "Messages" },
-  { to: "/notifications",       icon: Bell,            label: "Notifications" },
-];
+import LanguageSwitcher from "../LanguageSwitcher";
 
 function RolePill({ role }) {
+  const { t } = useLanguage();
   const cfg = {
-    farmer: { label: "Farmer", cls: "bg-green-500/20 text-green-300 border-green-500/30" },
-    buyer:  { label: "Buyer",  cls: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
-    admin:  { label: "Admin",  cls: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
+    farmer: { label: t("role.farmer"), cls: "bg-green-500/20 text-green-300 border-green-500/30" },
+    buyer:  { label: t("role.buyer"),  cls: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
+    admin:  { label: t("role.admin"),  cls: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
   };
   const c = cfg[role] || cfg.buyer;
   return (
@@ -52,6 +27,7 @@ function RolePill({ role }) {
 
 export default function Sidebar({ mobileOpen, setMobileOpen }) {
   const { user, role, logout } = useAuth();
+  const { t } = useLanguage();
   const { unreadCount } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
@@ -65,9 +41,37 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
     setMobileOpen(false);
   }, [location.pathname, setMobileOpen]);
 
+  const NAV_FARMER = useMemo(() => [
+    { to: "/farmer/dashboard",    icon: LayoutDashboard, label: t("nav.dashboard") },
+    { to: "/farmer/crops",        icon: Sprout,          label: t("nav.myCrops") },
+    { to: "/farmer/requests",     icon: ShoppingBag,     label: t("nav.purchaseRequests") },
+    { to: "/farmer/requirements", icon: ClipboardList,   label: t("nav.buyerNeeds") },
+    { to: "/farmer/bookings",     icon: BookOpen,        label: t("nav.myBookings") },
+    { to: "/farmer/flash-sales",  icon: Zap,             label: t("nav.flashSales") },
+  ], [t]);
+
+  const NAV_BUYER = useMemo(() => [
+    { to: "/buyer/marketplace",   icon: Store,           label: t("nav.marketplace") },
+    { to: "/buyer/requests",      icon: FileText,        label: t("nav.myRequests") },
+    { to: "/buyer/requirements",  icon: ClipboardList,   label: t("nav.myRequirements") },
+    { to: "/buyer/bookings",      icon: BookOpen,        label: t("nav.myBookings") },
+  ], [t]);
+
+  const NAV_ADMIN = useMemo(() => [
+    { to: "/admin",               icon: LayoutDashboard, label: t("nav.dashboard") },
+    { to: "/admin/farmers",       icon: Sprout,          label: t("nav.farmers") },
+    { to: "/admin/buyers",        icon: Users,           label: t("nav.buyers") },
+    { to: "/admin/analytics",     icon: BarChart3,       label: t("nav.analytics") },
+  ], [t]);
+
+  const NAV_SHARED = useMemo(() => [
+    { to: "/chat",                icon: MessageCircle,   label: t("nav.messages") },
+    { to: "/notifications",       icon: Bell,            label: t("nav.notifications") },
+  ], [t]);
+
   const navLinks = role === "farmer" ? NAV_FARMER : role === "admin" ? NAV_ADMIN : NAV_BUYER;
 
-  const SidebarContent = () => (
+  const renderSidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 py-5 border-b border-white/8">
@@ -98,7 +102,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
       {/* Main Nav */}
       <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
         <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider px-3 py-2">
-          {role === "admin" ? "Administration" : "Main Menu"}
+          {role === "admin" ? t("nav.administration") : t("nav.mainMenu")}
         </p>
         {navLinks.map(({ to, icon: Icon, label }) => (
           <NavLink
@@ -111,7 +115,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
           >
             <Icon size={17} />
             <span className="flex-1">{label}</span>
-            {label === "Notifications" && unreadCount > 0 && (
+            {to === "/notifications" && unreadCount > 0 && (
               <span className="ml-auto bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>
@@ -122,7 +126,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
         {role !== "admin" && (
           <>
             <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider px-3 py-2 mt-3">
-              Tools
+              {t("nav.tools")}
             </p>
             {NAV_SHARED.map(({ to, icon: Icon, label }) => (
               <NavLink
@@ -134,7 +138,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
               >
                 <Icon size={17} />
                 <span className="flex-1">{label}</span>
-                {label === "Notifications" && unreadCount > 0 && (
+                {to === "/notifications" && unreadCount > 0 && (
                   <span className="ml-auto bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
@@ -150,15 +154,16 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
         {role === "admin" && (
           <NavLink to="/admin/analytics" className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}>
             <BarChart3 size={17} />
-            <span>Analytics</span>
+            <span>{t("nav.analytics")}</span>
           </NavLink>
         )}
+        <LanguageSwitcher variant="sidebar" />
         <button
           onClick={handleLogout}
           className="sidebar-link w-full text-left hover:bg-red-500/10 hover:text-red-400 transition-colors"
         >
           <LogOut size={17} />
-          <span>Sign Out</span>
+          <span>{t("nav.signOut")}</span>
         </button>
       </div>
     </div>
@@ -168,7 +173,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
     <>
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-60 bg-slate-900 border-r border-white/6 flex-shrink-0 h-screen sticky top-0">
-        <SidebarContent />
+        {renderSidebarContent()}
       </aside>
 
       {/* Mobile Overlay */}
@@ -185,7 +190,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
             >
               <X size={20} />
             </button>
-            <SidebarContent />
+            {renderSidebarContent()}
           </aside>
         </div>
       )}

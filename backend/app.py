@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 import socketio
 from contextlib import asynccontextmanager
 
-from routes import auth, farmer, buyer, bookings, chat, notifications, flash_sales, admin
+from routes import auth, farmer, buyer, bookings, chat, notifications, flash_sales, admin, upload
 from sockets.chat_socket import sio
 from scheduler.main_scheduler import start_scheduler, shutdown_scheduler
 
@@ -36,6 +36,7 @@ fastapi_app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 fastapi_app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
 fastapi_app.include_router(flash_sales.router, prefix="/api/flash-sales", tags=["Flash Sales"])
 fastapi_app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
+fastapi_app.include_router(upload.router, prefix="/api/upload", tags=["Upload"])
 
 
 @fastapi_app.get("/")

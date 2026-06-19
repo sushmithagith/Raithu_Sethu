@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { BookOpen, CheckCircle2, Package, Calendar, MapPin, CreditCard } from "lucide-react";
 import { bookingsApi } from "../../api/resources";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
+import { translateCropName } from "../../utils/cropTranslations";
 import { StatusBadge } from "../../components/ui/Badge";
 import { SkeletonTable } from "../../components/ui/Skeleton";
 import EmptyState from "../../components/ui/EmptyState";
@@ -13,13 +15,14 @@ export default function FarmerBookings() {
   const [completing, setCompleting] = useState({});
   const [filter, setFilter] = useState("all");
   const toast = useToast();
+  const { t, lang } = useLanguage();
 
   const load = async () => {
     setLoading(true);
     try {
       const res = await bookingsApi.getAll();
       setBookings(res.data || []);
-    } catch { toast.error("Failed to load bookings"); }
+    } catch { toast.error(t('error.generic')); }
     finally { setLoading(false); }
   };
 
@@ -29,24 +32,24 @@ export default function FarmerBookings() {
     setCompleting(c => ({ ...c, [id]: true }));
     try {
       await bookingsApi.complete(id);
-      toast.success("Booking marked as completed!");
+      toast.success(t('farmer.bookings.completed'));
       load();
-    } catch (err) { toast.error(err?.response?.data?.detail || "Failed to complete booking"); }
+    } catch (err) { toast.error(err?.response?.data?.detail || t('error.generic')); }
     finally { setCompleting(c => ({ ...c, [id]: false })); }
   };
 
   const filtered = filter === "all" ? bookings : bookings.filter(b => b.status === filter);
 
   const tabs = [
-    { key: "all", label: "All" },
-    { key: "confirmed", label: "Confirmed" },
-    { key: "completed", label: "Completed" },
+    { key: "all", label: t('farmer.requests.all') },
+    { key: "confirmed", label: t('farmer.bookings.confirmed') },
+    { key: "completed", label: t('farmer.bookings.completed') },
   ];
 
   return (
     <div className="page-enter space-y-6">
       <div className="page-header">
-        <h1 className="page-title">My Bookings</h1>
+        <h1 className="page-title">{t('farmer.bookings.title')}</h1>
         <p className="page-subtitle">Track orders and mark deliveries as complete</p>
       </div>
 
@@ -66,7 +69,7 @@ export default function FarmerBookings() {
         <div className="card">
           <EmptyState
             type="requests"
-            title={filter !== "all" ? `No ${filter} bookings` : "No bookings yet"}
+            title={filter !== "all" ? `No ${filter} bookings` : t('farmer.bookings.noBookings')}
             description="Bookings from buyers will appear here when they book your crops."
           />
         </div>
@@ -75,14 +78,14 @@ export default function FarmerBookings() {
           <table className="w-full text-sm">
             <thead className="table-header">
               <tr className="text-xs text-slate-500 uppercase tracking-wider">
-                <th className="text-left px-5 py-3 font-semibold">Crop</th>
-                <th className="text-left px-4 py-3 font-semibold">Quantity</th>
-                <th className="text-left px-4 py-3 font-semibold">Total Price</th>
+                <th className="text-left px-5 py-3 font-semibold">{t('crop.name')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('crop.quantity')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('crop.price')}</th>
                 <th className="text-left px-4 py-3 font-semibold">Payment</th>
                 <th className="text-left px-4 py-3 font-semibold">Delivery</th>
-                <th className="text-left px-4 py-3 font-semibold">Date</th>
-                <th className="text-left px-4 py-3 font-semibold">Status</th>
-                <th className="text-left px-4 py-3 font-semibold">Action</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('crop.harvestDate')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('crop.status')}</th>
+                <th className="text-left px-4 py-3 font-semibold">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -93,7 +96,7 @@ export default function FarmerBookings() {
                       <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
                         <Package size={14} className="text-green-600" />
                       </div>
-                      <p className="font-semibold text-slate-800">{booking.crops?.name || "Crop"}</p>
+                      <p className="font-semibold text-slate-800">{translateCropName(booking.crops?.name || "", lang) || t('crop.name')}</p>
                     </div>
                   </td>
                   <td className="px-4 py-4 text-slate-700">{booking.quantity} {booking.crops?.unit || "units"}</td>
@@ -123,7 +126,7 @@ export default function FarmerBookings() {
                     )}
                     {booking.status === "completed" && (
                       <span className="text-xs text-green-600 font-semibold flex items-center gap-1">
-                        <CheckCircle2 size={12} /> Done
+                        <CheckCircle2 size={12} /> {t('farmer.bookings.completed')}
                       </span>
                     )}
                   </td>

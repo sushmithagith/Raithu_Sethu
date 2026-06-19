@@ -13,4 +13,6 @@ export const buyerApi = {
   deleteRequirement: (requirementId) =>
     client.delete(`/buyer/requirements/${requirementId}`),
   getRequirementResponses: () => client.get("/buyer/requirements/responses"),
+  acceptRequirementResponse: (responseId) =>
+    client.post(`/buyer/requirements/accept-response/${responseId}`),
 };

@@ -5,6 +5,7 @@ import {
   ChevronRight, Play, Globe2, Clock, Award,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
 
 const STATS = [
   { label: "Active Farmers", value: "12,458+", icon: Sprout, color: "text-green-600", bg: "bg-green-50" },
@@ -60,6 +61,7 @@ const STEPS_BUYER = [
 
 export default function Landing() {
   const { isAuthenticated, role } = useAuth();
+  const { t, lang } = useLanguage();
   const navigate = useNavigate();
 
   const getDashboard = () => {
@@ -80,19 +82,19 @@ export default function Landing() {
             <span className="font-bold text-xl text-slate-800 tracking-tight">RaithuSethu</span>
           </Link>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
-            <Link to="/buyer/marketplace" className="hover:text-green-600 transition-colors">Marketplace</Link>
+            <Link to="/buyer/marketplace" className="hover:text-green-600 transition-colors">{t('nav.marketplace')}</Link>
             <a href="#features" className="hover:text-green-600 transition-colors">Features</a>
             <a href="#how-it-works" className="hover:text-green-600 transition-colors">How it works</a>
           </div>
           <div className="flex items-center gap-3">
             {isAuthenticated ? (
               <button onClick={() => navigate(getDashboard())} className="btn btn-primary btn-sm">
-                Go to Dashboard <ArrowRight size={14} />
+                {t('nav.dashboard')} <ArrowRight size={14} />
               </button>
             ) : (
               <>
-                <Link to="/login" className="btn btn-secondary btn-sm hidden sm:inline-flex">Sign in</Link>
-                <Link to="/register" className="btn btn-primary btn-sm">Get Started</Link>
+                <Link to="/login" className="btn btn-secondary btn-sm hidden sm:inline-flex">{t('auth.login')}</Link>
+                <Link to="/register" className="btn btn-primary btn-sm">{t('landing.getStarted')}</Link>
               </>
             )}
           </div>
@@ -118,18 +120,17 @@ export default function Landing() {
                 <span className="text-green-400 text-sm font-semibold">Live marketplace • 12,000+ farmers</span>
               </div>
               <h1 className="text-5xl md:text-6xl font-bold text-white leading-tight mb-6">
-                Reduce Food Waste.<br />
-                <span className="gradient-text">Increase Farmer Profit.</span>
+                {t('landing.title')}<br />
               </h1>
               <p className="text-slate-400 text-lg leading-relaxed mb-8 max-w-lg">
-                Connect farmers directly with buyers through our real-time crop listings, smart matching, flash sales, and direct chat. No middlemen, fair prices.
+                {t('landing.subtitle')}
               </p>
               <div className="flex flex-wrap gap-4">
                 <Link to="/register" className="btn btn-primary btn-xl">
-                  Get Started Free <ArrowRight size={18} />
+                  {t('landing.getStarted')} <ArrowRight size={18} />
                 </Link>
                 <Link to="/buyer/marketplace" className="btn btn-lg bg-white/10 text-white border border-white/20 hover:bg-white/15">
-                  Browse Marketplace
+                  {t('nav.marketplace')}
                 </Link>
               </div>
               <div className="flex items-center gap-4 mt-8 pt-8 border-t border-white/10">
@@ -273,7 +274,7 @@ export default function Landing() {
                 </div>
               ))}
               <Link to="/register" className="btn btn-primary mt-2">
-                Register as Farmer <ArrowRight size={16} />
+                {t('auth.register')} <ArrowRight size={16} />
               </Link>
             </div>
             {/* Buyer */}
@@ -294,7 +295,7 @@ export default function Landing() {
                 </div>
               ))}
               <Link to="/buyer/marketplace" className="btn bg-blue-600 text-white hover:bg-blue-700 mt-2 inline-flex items-center gap-2">
-                Browse Marketplace <ArrowRight size={16} />
+                {t('nav.marketplace')} <ArrowRight size={16} />
               </Link>
             </div>
           </div>
@@ -307,14 +308,14 @@ export default function Landing() {
         <div className="absolute inset-0 opacity-10"
           style={{ backgroundImage: "radial-gradient(circle at 25px 25px, rgba(255,255,255,0.2) 2px, transparent 0)", backgroundSize: "50px 50px" }} />
         <div className="relative max-w-3xl mx-auto px-4 text-center animate-fade-in">
-          <h2 className="text-4xl font-bold text-white mb-4">Ready to transform your agricultural business?</h2>
-          <p className="text-slate-400 text-lg mb-8">Join thousands of farmers and buyers already trading smarter on RaithuSethu.</p>
+          <h2 className="text-4xl font-bold text-white mb-4">{t('landing.title')}</h2>
+          <p className="text-slate-400 text-lg mb-8">{t('landing.subtitle')}</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/register" className="btn btn-primary btn-xl">
-              Start for Free <ArrowRight size={18} />
+              {t('landing.getStarted')} <ArrowRight size={18} />
             </Link>
             <Link to="/buyer/marketplace" className="btn btn-xl bg-white/10 text-white border border-white/20 hover:bg-white/15">
-              Browse Crops
+              {t('nav.marketplace')}
             </Link>
           </div>
         </div>
@@ -331,9 +332,9 @@ export default function Landing() {
           </div>
           <p className="text-slate-500 text-sm">© 2026 RaithuSethu. Reducing food waste, increasing farmer prosperity.</p>
           <div className="flex items-center gap-4 text-sm text-slate-500">
-            <Link to="/login" className="hover:text-white transition-colors">Sign in</Link>
-            <Link to="/register" className="hover:text-white transition-colors">Register</Link>
-            <Link to="/buyer/marketplace" className="hover:text-white transition-colors">Marketplace</Link>
+            <Link to="/login" className="hover:text-white transition-colors">{t('auth.login')}</Link>
+            <Link to="/register" className="hover:text-white transition-colors">{t('auth.register')}</Link>
+            <Link to="/buyer/marketplace" className="hover:text-white transition-colors">{t('nav.marketplace')}</Link>
           </div>
         </div>
       </footer>

@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
-import { ClipboardList, Send, MapPin, Calendar, DollarSign, User, Package, CheckCircle2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ClipboardList, Send, MapPin, Calendar, DollarSign, User, Package, CheckCircle2, MessageCircle } from "lucide-react";
 import { farmerApi } from "../../api/farmer";
+import { chatApi } from "../../api/resources";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
+import { translateCropName } from "../../utils/cropTranslations";
 import Modal from "../../components/ui/Modal";
 import { CategoryBadge } from "../../components/ui/Badge";
 import { SkeletonTable } from "../../components/ui/Skeleton";
@@ -9,6 +13,7 @@ import EmptyState from "../../components/ui/EmptyState";
 import { format, parseISO } from "date-fns";
 
 export default function BuyerRequirements() {
+  const navigate = useNavigate();
   const [requirements, setRequirements] = useState([]);
   const [myCrops, setMyCrops] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +22,7 @@ export default function BuyerRequirements() {
   const [responding, setResponding] = useState(false);
   const [respondedIds, setRespondedIds] = useState(new Set());
   const toast = useToast();
+  const { t, lang } = useLanguage();
 
   const load = async () => {
     setLoading(true);
@@ -29,11 +35,18 @@ export default function BuyerRequirements() {
       setRequirements(reqRes.data || []);
       setMyCrops((cropsRes.data || []).filter(c => c.status === "active"));
       setRespondedIds(new Set(myRes.data || []));
-    } catch { toast.error("Failed to load requirements"); }
+    } catch { toast.error(t('error.generic')); }
     finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleChat = async (buyerId) => {
+    try {
+      const res = await chatApi.createConversation(buyerId);
+      navigate("/chat", { state: { conversationId: res.data?.id } });
+    } catch { toast.error(t('error.generic')); }
+  };
 
   const openRespond = (req) => {
     setRespondModal(req);
@@ -42,8 +55,8 @@ export default function BuyerRequirements() {
 
   const handleRespond = async (e) => {
     e.preventDefault();
-    if (!responseForm.crop_id) { toast.error("Select a crop to offer"); return; }
-    if (!responseForm.offered_price || Number(responseForm.offered_price) <= 0) { toast.error("Enter a valid offered price"); return; }
+    if (!responseForm.crop_id) { toast.error(t('farmer.requirements.selectCrop')); return; }
+    if (!responseForm.offered_price || Number(responseForm.offered_price) <= 0) { toast.error(t('error.generic')); return; }
     setResponding(true);
     try {
       await farmerApi.respondToRequirement({
@@ -52,16 +65,16 @@ export default function BuyerRequirements() {
         offered_price: Number(responseForm.offered_price),
         message: responseForm.message,
       });
-      toast.success("Response sent successfully!");
+      toast.success(t('farmer.requirements.responseSent'));
       setRespondModal(null);
-    } catch (err) { toast.error(err?.response?.data?.detail || "Failed to send response"); }
+    } catch (err) { toast.error(err?.response?.data?.detail || t('error.generic')); }
     finally { setResponding(false); }
   };
 
   return (
     <div className="page-enter space-y-6">
       <div className="page-header">
-        <h1 className="page-title">Buyer Requirements</h1>
+        <h1 className="page-title">{t('farmer.requirements.title')}</h1>
         <p className="page-subtitle">Browse what buyers need and respond with your available crops</p>
       </div>
 
@@ -71,8 +84,8 @@ export default function BuyerRequirements() {
         <div className="card">
           <EmptyState
             type="requests"
-            title="No buyer requirements posted"
-            description="When buyers post requirements, they'll appear here. Check back later."
+            title={t('farmer.requirements.noRequirements')}
+            description={t('farmer.requirements.noRequirementsDesc')}
           />
         </div>
       ) : (
@@ -81,7 +94,7 @@ export default function BuyerRequirements() {
             <div key={req.id} className="card p-5 card-interactive animate-fade-in" style={{ animationDelay: `${i * 60}ms` }}>
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="font-bold text-slate-900 text-base">{req.crop_name}</h3>
+                  <h3 className="font-bold text-slate-900 text-base">{translateCropName(req.crop_name, lang)}</h3>
                   <CategoryBadge category={req.category} />
                 </div>
                 <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center">
@@ -123,9 +136,18 @@ export default function BuyerRequirements() {
               )}
 
               {respondedIds.has(req.id) ? (
-                <button disabled className="btn btn-primary w-full btn-sm opacity-60 cursor-not-allowed">
-                  <CheckCircle2 size={13} /> Responded
-                </button>
+                <div className="flex gap-2">
+                  <button disabled className="btn btn-primary flex-1 btn-sm opacity-60 cursor-not-allowed">
+                    <CheckCircle2 size={13} /> {t('farmer.requirements.responded')}
+                  </button>
+                  <button
+                    onClick={() => handleChat(req.buyer_id)}
+                    className="btn btn-secondary btn-sm"
+                    title={t('chat.title')}
+                  >
+                    <MessageCircle size={14} />
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={() => openRespond(req)}
@@ -133,7 +155,7 @@ export default function BuyerRequirements() {
                   className="btn btn-primary w-full btn-sm"
                 >
                   <Send size={13} />
-                  {myCrops.length === 0 ? "No Active Crops" : "Respond with Crop"}
+                  {myCrops.length === 0 ? "No Active Crops" : t('farmer.requirements.respond')}
                 </button>
               )}
             </div>
@@ -145,7 +167,7 @@ export default function BuyerRequirements() {
       <Modal
         open={!!respondModal}
         onClose={() => setRespondModal(null)}
-        title="Respond to Requirement"
+        title={t('farmer.requirements.respondModal')}
         subtitle={respondModal ? `For: ${respondModal.crop_name}` : ""}
         size="md"
       >
@@ -153,25 +175,25 @@ export default function BuyerRequirements() {
           <form onSubmit={handleRespond} className="space-y-4">
             <div className="bg-slate-50 rounded-xl p-4">
               <p className="text-sm text-slate-600">
-                <strong>{respondModal.crop_name}</strong> — {respondModal.quantity} {respondModal.unit} needed. Max: ₹{respondModal.max_price}/{respondModal.unit}
+                <strong>{translateCropName(respondModal.crop_name, lang)}</strong> — {respondModal.quantity} {respondModal.unit} needed. Max: ₹{respondModal.max_price}/{respondModal.unit}
               </p>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Select Your Crop <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('farmer.requirements.selectCrop')} <span className="text-red-500">*</span></label>
               <select
                 value={responseForm.crop_id}
                 onChange={e => setResponseForm(f => ({ ...f, crop_id: e.target.value }))}
                 className="input-field"
                 required
               >
-                <option value="">— Select crop —</option>
+                <option value="">— {t('farmer.requirements.selectCrop')} —</option>
                 {myCrops.map(c => (
-                  <option key={c.id} value={c.id}>{c.name} ({c.quantity} {c.unit} @ ₹{c.price_per_unit})</option>
+                  <option key={c.id} value={c.id}>{translateCropName(c.name, lang)} ({c.quantity} {c.unit} @ ₹{c.price_per_unit})</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Your Offered Price (₹/{respondModal.unit}) <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('farmer.requirements.offerPrice')} (₹/{respondModal.unit}) <span className="text-red-500">*</span></label>
               <input
                 type="number"
                 min="0.01"
@@ -184,19 +206,19 @@ export default function BuyerRequirements() {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Message (optional)</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('farmer.requirements.message')}</label>
               <textarea
                 value={responseForm.message}
                 onChange={e => setResponseForm(f => ({ ...f, message: e.target.value }))}
                 rows={3}
-                placeholder="Additional info, delivery terms, quality notes..."
+                placeholder={t('common.typeHere')}
                 className="input-field resize-none"
               />
             </div>
             <div className="flex gap-3 pt-2 justify-end border-t border-slate-100">
-              <button type="button" onClick={() => setRespondModal(null)} className="btn btn-secondary">Cancel</button>
+              <button type="button" onClick={() => setRespondModal(null)} className="btn btn-secondary">{t('common.cancel')}</button>
               <button type="submit" disabled={responding} className="btn btn-primary">
-                {responding ? "Sending..." : <><Send size={14} /> Send Response</>}
+                {responding ? t('common.saving') : <><Send size={14} /> {t('common.send')}</>}
               </button>
             </div>
           </form>

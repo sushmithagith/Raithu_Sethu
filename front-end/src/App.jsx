@@ -3,6 +3,7 @@ import { ToastProvider } from "./context/ToastContext";
 import { AuthProvider } from "./context/AuthContext";
 import { SocketProvider } from "./context/SocketContext";
 import { NotificationProvider } from "./context/NotificationContext";
+import { LanguageProvider } from "./context/LanguageContext";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import PageLayout from "./components/layout/PageLayout";
 
@@ -73,11 +74,13 @@ export default function App() {
     <BrowserRouter>
       <ToastProvider>
         <AuthProvider>
-          <SocketProvider>
-            <NotificationProvider>
-              <AppRoutes />
-            </NotificationProvider>
-          </SocketProvider>
+          <LanguageProvider>
+            <SocketProvider>
+              <NotificationProvider>
+                <AppRoutes />
+              </NotificationProvider>
+            </SocketProvider>
+          </LanguageProvider>
         </AuthProvider>
       </ToastProvider>
     </BrowserRouter>

@@ -3,6 +3,8 @@ import { Zap, Plus, Edit2, Clock, Percent, AlertTriangle } from "lucide-react";
 import { farmerApi } from "../../api/farmer";
 import { flashSalesApi } from "../../api/resources";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
+import { translateCropName } from "../../utils/cropTranslations";
 import Modal from "../../components/ui/Modal";
 import { SkeletonCard } from "../../components/ui/Skeleton";
 import EmptyState from "../../components/ui/EmptyState";
@@ -21,7 +23,8 @@ function Countdown({ endTime }) {
     return () => clearInterval(t);
   }, [endTime]);
 
-  if (remaining === 0) return <span className="text-red-500 text-xs font-semibold">Expired</span>;
+  const { t } = useLanguage();
+  if (remaining === 0) return <span className="text-red-500 text-xs font-semibold">{t('crop.status.expired')}</span>;
 
   const h = Math.floor(remaining / 3600);
   const m = Math.floor((remaining % 3600) / 60);
@@ -48,6 +51,7 @@ export default function FlashSales() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ crop_id: "", discount_percentage: "", start_time: "", end_time: "", is_active: true });
   const toast = useToast();
+  const { t, lang } = useLanguage();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -59,7 +63,7 @@ export default function FlashSales() {
       const activeCrops = (cropsRes.data || []).filter(c => c.status === "active");
       setCrops(activeCrops);
       setSales(salesRes.data || []);
-    } catch { toast.error("Failed to load data"); }
+    } catch { toast.error(t('error.generic')); }
     finally { setLoading(false); }
   }, [toast]);
 
@@ -94,11 +98,19 @@ export default function FlashSales() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!form.crop_id) { toast.error("Select a crop"); return; }
+    if (!form.crop_id) { toast.error(t('farmer.requirements.selectCrop')); return; }
     const disc = Number(form.discount_percentage);
-    if (!disc || disc <= 0 || disc > 99) { toast.error("Discount must be between 1-99%"); return; }
-    if (!form.start_time || !form.end_time) { toast.error("Set start and end time"); return; }
-    if (new Date(form.end_time) <= new Date(form.start_time)) { toast.error("End time must be after start time"); return; }
+    if (!disc || disc <= 0 || disc > 99) { toast.error(t('error.generic')); return; }
+    if (!form.start_time || !form.end_time) { toast.error(t('error.generic')); return; }
+    const startDate = new Date(form.start_time);
+    const endDate = new Date(form.end_time);
+    if (endDate <= startDate) { toast.error("Flash Sale end date must be after start date"); return; }
+    if (form.crop_id) {
+      const saleCrop = crops.find(c => c.id === form.crop_id) || editSale?.crops;
+      if (saleCrop?.harvest_date && startDate < new Date(saleCrop.harvest_date)) {
+        toast.error("Flash Sale start date must be on or after the crop harvest date"); return;
+      }
+    }
 
     setSaving(true);
     try {
@@ -111,14 +123,14 @@ export default function FlashSales() {
       };
       if (editSale) {
         await flashSalesApi.update(editSale.id, payload);
-        toast.success("Flash sale updated!");
+        toast.success(t('success.generic'));
       } else {
         await flashSalesApi.create(payload);
-        toast.success("Flash sale created! Buyers are being notified.");
+        toast.success(t('success.generic'));
       }
       setModalOpen(false);
       load();
-    } catch (err) { toast.error(err?.response?.data?.detail || "Failed to save flash sale"); }
+    } catch (err) { toast.error(err?.response?.data?.detail || t('error.generic')); }
     finally { setSaving(false); }
   };
 
@@ -128,11 +140,11 @@ export default function FlashSales() {
     <div className="page-enter space-y-6">
       <div className="page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="page-title">Flash Sales</h1>
+          <h1 className="page-title">{t('farmer.flashSales.title')}</h1>
           <p className="page-subtitle">Create time-limited discounted offers to boost sales quickly</p>
         </div>
         <button onClick={openCreate} disabled={crops.length === 0} className="btn btn-amber">
-          <Plus size={16} /> Create Flash Sale
+          <Plus size={16} /> {t('farmer.flashSales.create')}
         </button>
       </div>
 
@@ -151,10 +163,10 @@ export default function FlashSales() {
         <div className="card">
           <EmptyState
             type="crops"
-            title="No flash sales yet"
+            title={t('farmer.flashSales.noSales')}
             description="Create your first flash sale to notify buyers of limited-time discounts on your crops."
             action={crops.length > 0 ? openCreate : undefined}
-            actionLabel="Create Flash Sale"
+            actionLabel={t('farmer.flashSales.create')}
             icon={Zap}
           />
         </div>
@@ -172,16 +184,16 @@ export default function FlashSales() {
                 <div className="p-5">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="font-bold text-slate-900">{crop?.name || "Crop"}</h3>
+                      <h3 className="font-bold text-slate-900">{crop ? translateCropName(crop.name, lang) : t('crop.name')}</h3>
                       <p className="text-xs text-slate-500">{crop?.location || ""}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       {isActive ? (
                         <span className="badge-flash text-xs px-2.5 py-1 rounded-full flex items-center gap-1">
-                          <Zap size={11} /> Live
+                          <Zap size={11} /> {t('crop.status.active')}
                         </span>
                       ) : (
-                        <span className="badge-sold text-xs px-2.5 py-1 rounded-full">Ended</span>
+                        <span className="badge-sold text-xs px-2.5 py-1 rounded-full">{t('crop.status.expired')}</span>
                       )}
                     </div>
                   </div>
@@ -205,13 +217,13 @@ export default function FlashSales() {
                   )}
 
                   <div className="text-xs text-slate-500 space-y-1 mb-4">
-                    <p>Start: {format(parseISO(sale.start_time), "dd MMM, HH:mm")}</p>
-                    <p>End: {format(parseISO(sale.end_time), "dd MMM, HH:mm")}</p>
-                    {crop?.quantity && <p>Stock: {crop.quantity} {crop.unit}</p>}
+                    <p>{t('crop.harvestDate')}: {format(parseISO(sale.start_time), "dd MMM, HH:mm")}</p>
+                    <p>{t('crop.expiryDate')}: {format(parseISO(sale.end_time), "dd MMM, HH:mm")}</p>
+                    {crop?.quantity && <p>{t('crop.quantity')}: {crop.quantity} {crop.unit}</p>}
                   </div>
 
                   <button onClick={() => openEdit(sale)} className="btn btn-secondary w-full btn-sm">
-                    <Edit2 size={13} /> Edit Sale
+                    <Edit2 size={13} /> {t('farmer.flashSales.edit')}
                   </button>
                 </div>
               </div>
@@ -224,17 +236,17 @@ export default function FlashSales() {
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editSale ? "Edit Flash Sale" : "Create Flash Sale"}
+        title={editSale ? t('farmer.flashSales.edit') : t('farmer.flashSales.create')}
         subtitle="Set discount and time window"
         size="md"
       >
         <form onSubmit={handleSave} className="space-y-4">
           {!editSale && (
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Select Crop <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('farmer.requirements.selectCrop')} <span className="text-red-500">*</span></label>
               <select value={form.crop_id} onChange={e => setForm(f => ({ ...f, crop_id: e.target.value }))} className="input-field" required>
-                <option value="">— Select crop —</option>
-                {crops.map(c => <option key={c.id} value={c.id}>{c.name} ({c.quantity} {c.unit} @ ₹{c.price_per_unit})</option>)}
+                <option value="">— {t('farmer.requirements.selectCrop')} —</option>
+                {crops.map(c => <option key={c.id} value={c.id}>{translateCropName(c.name, lang)} ({c.quantity} {c.unit} @ ₹{c.price_per_unit})</option>)}
               </select>
             </div>
           )}
@@ -242,29 +254,29 @@ export default function FlashSales() {
             <label className="block text-sm font-semibold text-slate-700 mb-1.5">Discount Percentage <span className="text-red-500">*</span></label>
             <div className="relative">
               <Percent size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input type="number" min="1" max="99" value={form.discount_percentage} onChange={e => setForm(f => ({ ...f, discount_percentage: e.target.value }))} placeholder="e.g. 25" className="input-field pl-9" required />
+              <input type="number" min="1" max="99" value={form.discount_percentage} onChange={e => setForm(f => ({ ...f, discount_percentage: e.target.value }))} placeholder={t('common.typeHere')} className="input-field pl-9" required />
             </div>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Start Time <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('crop.harvestDate')} <span className="text-red-500">*</span></label>
               <input type="datetime-local" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} className="input-field" required />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">End Time <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('crop.expiryDate')} <span className="text-red-500">*</span></label>
               <input type="datetime-local" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} className="input-field" required />
             </div>
           </div>
           {editSale && (
             <div className="flex items-center gap-3">
               <input type="checkbox" id="is_active" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="w-4 h-4 accent-green-600" />
-              <label htmlFor="is_active" className="text-sm font-medium text-slate-700">Active (buyers can see this sale)</label>
+              <label htmlFor="is_active" className="text-sm font-medium text-slate-700">{t('crop.status.active')}</label>
             </div>
           )}
           <div className="flex gap-3 pt-2 justify-end border-t border-slate-100">
-            <button type="button" onClick={() => setModalOpen(false)} className="btn btn-secondary">Cancel</button>
+            <button type="button" onClick={() => setModalOpen(false)} className="btn btn-secondary">{t('common.cancel')}</button>
             <button type="submit" disabled={saving} className="btn btn-amber">
-              {saving ? "Saving..." : editSale ? "Update Sale" : <><Zap size={14} /> Launch Flash Sale</>}
+              {saving ? t('common.saving') : editSale ? t('farmer.flashSales.edit') : <><Zap size={14} /> {t('farmer.flashSales.create')}</>}
             </button>
           </div>
         </form>

@@ -64,6 +64,16 @@ async def create_flash_sale(body: FlashSaleCreate, current_user: dict = Depends(
     if body.end_time <= body.start_time:
         raise HTTPException(status_code=400, detail="end_time must be after start_time")
 
+    # Validate flash sale start_time >= crop harvest_date
+    if c.get("harvest_date"):
+        from datetime import datetime
+        harvest = datetime.fromisoformat(c["harvest_date"]) if isinstance(c["harvest_date"], str) else c["harvest_date"]
+        if body.start_time < harvest:
+            raise HTTPException(
+                status_code=400,
+                detail="Flash sale start date must be on or after the crop harvest date",
+            )
+
     # Prevent duplicate active sales on the same crop
     existing = (
         supabase.table("flash_sales")
@@ -122,6 +132,15 @@ async def update_flash_sale(
 
     if "end_time" in updates:
         updates["end_time"] = body.end_time.isoformat()
+
+    # Validate end_time > start_time on update
+    new_end = body.end_time if body.end_time else None
+    current_start = sale.get("start_time")
+    if new_end and current_start:
+        from datetime import datetime
+        start = datetime.fromisoformat(current_start) if isinstance(current_start, str) else current_start
+        if new_end <= start:
+            raise HTTPException(status_code=400, detail="end_time must be after start_time")
 
     result = supabase.table("flash_sales").update(updates).eq("id", flash_sale_id).execute()
     return result.data[0]

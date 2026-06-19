@@ -4,6 +4,8 @@ import { Search, Filter, Sprout, MapPin, Package, Send, X, Zap } from "lucide-re
 import { buyerApi } from "../../api/buyer";
 import { flashSalesApi } from "../../api/resources";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
+import { translateCropName } from "../../utils/cropTranslations";
 import Modal from "../../components/ui/Modal";
 import { StatusBadge, CategoryBadge } from "../../components/ui/Badge";
 import { SkeletonCropCards } from "../../components/ui/Skeleton";
@@ -27,6 +29,7 @@ export default function Marketplace() {
   const [reqModal, setReqModal] = useState(null);
   const [reqForm, setReqForm] = useState({ quantity: "", proposed_price: "", message: "" });
   const [requesting, setRequesting] = useState(false);
+  const { t, lang } = useLanguage();
   const toast = useToast();
 
   const load = async () => {
@@ -39,7 +42,7 @@ export default function Marketplace() {
       const activeCrops = (cropsRes.data || []).filter(c => c.status === "active");
       setCrops(activeCrops);
       setFlashSales(salesRes.data || []);
-    } catch { toast.error("Failed to load marketplace"); }
+    } catch { toast.error(t('error.generic')); }
     finally { setLoading(false); }
   };
 
@@ -62,6 +65,10 @@ export default function Marketplace() {
     e.preventDefault();
     const qty = Number(reqForm.quantity);
     if (!qty || qty <= 0 || qty > reqModal.quantity) { toast.error(`Quantity must be between 1 and ${reqModal.quantity}`); return; }
+    const proposedPrice = Number(reqForm.proposed_price);
+    if (reqForm.proposed_price && proposedPrice > (reqModal.flashSale ? reqModal.discountedPrice : reqModal.price_per_unit)) {
+      toast.error(`Proposed price cannot exceed the listed price`); return;
+    }
     setRequesting(true);
     try {
       await buyerApi.requestCrop({
@@ -70,9 +77,9 @@ export default function Marketplace() {
         proposed_price: reqForm.proposed_price ? Number(reqForm.proposed_price) : null,
         message: reqForm.message,
       });
-      toast.success("Purchase request sent to farmer!");
+      toast.success(t('buyer.marketplace.requestSent'));
       setReqModal(null);
-    } catch (err) { toast.error(err?.response?.data?.detail || "Failed to send request"); }
+    } catch (err) { toast.error(err?.response?.data?.detail || t('buyer.marketplace.requestFailed')); }
     finally { setRequesting(false); }
   };
 
@@ -87,8 +94,8 @@ export default function Marketplace() {
   return (
     <div className="page-enter space-y-6">
       <div className="page-header">
-        <h1 className="page-title">Marketplace</h1>
-        <p className="page-subtitle">Browse fresh produce directly from verified farmers</p>
+        <h1 className="page-title">{t('buyer.marketplace.title')}</h1>
+        <p className="page-subtitle">{t('buyer.marketplace.title')}</p>
       </div>
 
       {/* Filters */}
@@ -97,21 +104,21 @@ export default function Marketplace() {
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search crops, locations..."
+            placeholder={t('common.search')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="input-field pl-9"
           />
         </div>
         <select value={catFilter} onChange={e => setCatFilter(e.target.value)} className="input-field w-40">
-          <option value="">All Categories</option>
-          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+          <option value="">{t('buyer.marketplace.allCategories')}</option>
+          {CATEGORIES.map(c => <option key={c} value={c}>{t('crop.category.' + c.toLowerCase())}</option>)}
         </select>
         <div className="relative w-40">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">₹</span>
           <input
             type="number"
-            placeholder="Max Price"
+            placeholder={t('buyer.marketplace.maxPrice')}
             value={maxPrice}
             onChange={e => setMaxPrice(e.target.value)}
             className="input-field pl-8"
@@ -130,8 +137,8 @@ export default function Marketplace() {
         <div className="card">
           <EmptyState
             type="search"
-            title="No crops found"
-            description="Try adjusting your filters or search terms."
+            title={t('buyer.marketplace.noCrops')}
+            description={t('buyer.marketplace.noCropsDesc')}
           />
         </div>
       ) : (
@@ -159,7 +166,7 @@ export default function Marketplace() {
               {/* Content */}
               <div className="p-4 space-y-3">
                 <div>
-                  <h3 className="font-bold text-slate-900 text-lg truncate">{crop.name}</h3>
+                  <h3 className="font-bold text-slate-900 text-lg truncate">{translateCropName(crop.name, lang)}</h3>
                   <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1">
                     <MapPin size={12} /> {crop.location || "Location not specified"}
                   </div>
@@ -184,7 +191,7 @@ export default function Marketplace() {
 
                 <div className="pt-3 border-t border-slate-100">
                   <button onClick={() => openRequest(crop)} className="btn btn-primary w-full">
-                    <Package size={15} /> Request to Buy
+                      <Package size={15} /> {t('buyer.marketplace.requestCrop')}
                   </button>
                 </div>
               </div>
@@ -197,8 +204,8 @@ export default function Marketplace() {
       <Modal
         open={!!reqModal}
         onClose={() => setReqModal(null)}
-        title="Send Purchase Request"
-        subtitle={reqModal ? `To farmer for ${reqModal.name}` : ""}
+        title={t('buyer.marketplace.requestCrop')}
+        subtitle={reqModal ? t('buyer.marketplace.requestCrop') + ' - ' + translateCropName(reqModal.name, lang) : ""}
         size="sm"
       >
         {reqModal && (
@@ -215,7 +222,7 @@ export default function Marketplace() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Quantity you need ({reqModal.unit}) <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('buyer.marketplace.quantity')} ({reqModal.unit}) <span className="text-red-500">*</span></label>
               <input
                 type="number" min="0.1" max={reqModal.quantity} step="0.1"
                 value={reqForm.quantity} onChange={e => setReqForm(f => ({...f, quantity: e.target.value}))}
@@ -223,7 +230,7 @@ export default function Marketplace() {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Proposed Price (₹/{reqModal.unit})</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('buyer.marketplace.proposedPrice')} (₹/{reqModal.unit})</label>
               <input
                 type="number" min="0.01" step="0.01"
                 value={reqForm.proposed_price} onChange={e => setReqForm(f => ({...f, proposed_price: e.target.value}))}
@@ -232,7 +239,7 @@ export default function Marketplace() {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Message to Farmer</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('buyer.marketplace.message')}</label>
               <textarea
                 value={reqForm.message} onChange={e => setReqForm(f => ({...f, message: e.target.value}))}
                 rows={3} placeholder="Ask about quality, delivery options..."
@@ -241,9 +248,9 @@ export default function Marketplace() {
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-slate-100">
-              <button type="button" onClick={() => setReqModal(null)} className="btn btn-secondary flex-1">Cancel</button>
+              <button type="button" onClick={() => setReqModal(null)} className="btn btn-secondary flex-1">{t('common.cancel')}</button>
               <button type="submit" disabled={requesting} className="btn btn-primary flex-1">
-                {requesting ? "Sending..." : <><Send size={15} /> Send Request</>}
+                {requesting ? t('common.saving') : <><Send size={15} /> {t('buyer.marketplace.sendRequest')}</>}
               </button>
             </div>
           </form>

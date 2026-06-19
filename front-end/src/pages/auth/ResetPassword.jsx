@@ -3,6 +3,7 @@ import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Leaf, Lock, Eye, EyeOff, CheckCircle2, ShieldCheck } from "lucide-react";
 import { authApi } from "../../api/auth";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -12,21 +13,22 @@ export default function ResetPassword() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const { t } = useLanguage();
   const toast = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (password.length < 6) { toast.error("Password must be at least 6 characters"); return; }
-    if (password !== confirm) { toast.error("Passwords do not match"); return; }
+    if (password.length < 6) { toast.error(t('error.generic')); return; }
+    if (password !== confirm) { toast.error(t('error.generic')); return; }
     setLoading(true);
     try {
       await authApi.resetPassword(token, password);
       setDone(true);
-      toast.success("Password updated successfully!");
+      toast.success(t('success.generic'));
       setTimeout(() => navigate("/login"), 2500);
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Invalid or expired reset link.");
+      toast.error(err?.response?.data?.detail || t('error.generic'));
     } finally {
       setLoading(false);
     }
@@ -51,19 +53,19 @@ export default function ResetPassword() {
             <div className="w-14 h-14 rounded-2xl bg-green-50 flex items-center justify-center mb-6">
               <ShieldCheck size={24} className="text-green-600" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 mb-2">Set new password</h1>
-            <p className="text-slate-500 text-sm mb-8">Choose a strong password to protect your account.</p>
+            <h1 className="text-2xl font-bold text-slate-900 mb-2">{t('auth.resetPassword')}</h1>
+            <p className="text-slate-500 text-sm mb-8">{t('auth.resetPassword')}</p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">New Password</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('auth.password')}</label>
                 <div className="relative">
                   <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type={showPw ? "text" : "password"}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder="Min. 6 characters"
+                    placeholder={t('auth.password')}
                     className="input-field pl-9 pr-10"
                     required minLength={6}
                   />
@@ -83,26 +85,26 @@ export default function ResetPassword() {
                 )}
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Confirm Password</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('auth.confirmPassword')}</label>
                 <div className="relative">
                   <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type={showPw ? "text" : "password"}
                     value={confirm}
                     onChange={e => setConfirm(e.target.value)}
-                    placeholder="Repeat your password"
+                    placeholder={t('auth.confirmPassword')}
                     className={`input-field pl-9 ${confirm && confirm !== password ? "border-red-400" : ""}`}
                     required
                   />
                 </div>
-                {confirm && confirm !== password && <p className="text-xs text-red-500 mt-1">Passwords don't match</p>}
+                {confirm && confirm !== password && <p className="text-xs text-red-500 mt-1">{t('error.generic')}</p>}
               </div>
               <button type="submit" disabled={loading} className="btn btn-primary w-full btn-lg mt-2">
-                {loading ? "Updating..." : "Update Password"}
+                {loading ? t('common.saving') : t('auth.resetPassword')}
               </button>
             </form>
             <div className="mt-6 text-center">
-              <Link to="/login" className="text-sm text-slate-500 hover:text-slate-700">Back to Sign in</Link>
+              <Link to="/login" className="text-sm text-slate-500 hover:text-slate-700">{t('auth.login')}</Link>
             </div>
           </div>
         ) : (
@@ -110,9 +112,9 @@ export default function ResetPassword() {
             <div className="w-16 h-16 rounded-2xl bg-green-50 flex items-center justify-center mx-auto mb-6">
               <CheckCircle2 size={28} className="text-green-500" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-3">Password updated!</h2>
-            <p className="text-slate-500 text-sm mb-8">Your password has been changed successfully. Redirecting you to sign in...</p>
-            <Link to="/login" className="btn btn-primary inline-flex">Go to Sign in</Link>
+            <h2 className="text-2xl font-bold text-slate-900 mb-3">{t('auth.resetPassword')}</h2>
+            <p className="text-slate-500 text-sm mb-8">{t('success.generic')}</p>
+            <Link to="/login" className="btn btn-primary inline-flex">{t('auth.login')}</Link>
           </div>
         )}
       </div>

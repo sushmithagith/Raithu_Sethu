@@ -1,11 +1,16 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Send, User, Search, Loader2 } from "lucide-react";
+import { Send, User, Search, Loader2, Mic, Square, Play, Pause, Volume2 } from "lucide-react";
 import { chatApi } from "../../api/resources";
 import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
+import client from "../../api/client";
 import { format, parseISO, isToday, isYesterday } from "date-fns";
+
+let msgIdCounter = 0;
+function nextMsgId() { return `opt-${Date.now()}-${++msgIdCounter}`; }
 
 function formatMsgTime(iso) {
   if (!iso) return "";
@@ -20,20 +25,41 @@ export default function Chat() {
   const { socket } = useSocket();
   const location = useLocation();
   const navigate = useNavigate();
+  const { t, lang } = useLanguage();
   const toast = useToast();
-  
+
   const [conversations, setConversations] = useState([]);
   const [activeConv, setActiveConv] = useState(null);
   const [messages, setMessages] = useState([]);
   const [msgInput, setMsgInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [sending, setSending] = useState(false);
-  
+
+  // Voice recording
+  const [recording, setRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordTimerRef = useRef(null);
+  const recordingActiveConvRef = useRef(null);
+
+  // Audio playback
+  const [playingAudio, setPlayingAudio] = useState(null);
+  const audioRef = useRef(null);
+
+  // Speech-to-text
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef(null);
+  const speechFinalRef = useRef("");
+
   const messagesEndRef = useRef(null);
   const requestedConvId = location.state?.conversationId;
 
   const initialLoadDone = useRef(false);
+  const activeConvRef = useRef(null);
+  const socketRef = useRef(null);
+  useEffect(() => { activeConvRef.current = activeConv; }, [activeConv]);
+  useEffect(() => { socketRef.current = socket; }, [socket]);
 
   // Load conversations
   useEffect(() => {
@@ -53,9 +79,16 @@ export default function Chat() {
         setActiveConv(convs[0]);
       }
     }).catch(() => {
-      toast.error("Failed to load chats");
+      toast.error(t('error.generic'));
       setLoading(false);
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
   }, []);
 
   // Load messages for active conversation
@@ -65,15 +98,20 @@ export default function Chat() {
       setMessages(res.data || []);
       scrollToBottom();
     });
-  }, [activeConv?.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConv?.id, scrollToBottom]);
 
   // Handle incoming socket messages
   useEffect(() => {
     if (!socket) return;
     const handleReceiveMessage = (data) => {
-      if (activeConv && data.conversation_id === activeConv.id) {
+      const currentConv = activeConvRef.current;
+      if (currentConv && data.conversation_id === currentConv.id) {
         setMessages(prev => {
           if (prev.some(m => m.id === data.id)) return prev;
+          if (prev.some(m => m.id.startsWith("opt-") && m.sender_id === data.sender_id && m.content === data.content)) {
+            return prev.map(m => m.id.startsWith("opt-") && m.sender_id === data.sender_id && m.content === data.content ? data : m);
+          }
           return [...prev, data];
         });
         scrollToBottom();
@@ -89,23 +127,27 @@ export default function Chat() {
 
     socket.on("receive_message", handleReceiveMessage);
     return () => socket.off("receive_message", handleReceiveMessage);
-  }, [socket, activeConv?.id]);
-
-  const scrollToBottom = () => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
-  };
+  }, [socket, scrollToBottom]);
 
   const handleSend = (e) => {
     e.preventDefault();
     if (!msgInput.trim() || !activeConv || !socket) return;
-    socket.emit("send_message", {
+    const content = msgInput.trim();
+
+    // Optimistic UI update
+    const optimisticMsg = {
+      id: nextMsgId(),
       conversation_id: activeConv.id,
-      content: msgInput.trim(),
-    });
+      sender_id: user.id,
+      content,
+      is_read: false,
+      created_at: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
     setMsgInput("");
     scrollToBottom();
+
+    socket.emit("send_message", { conversation_id: activeConv.id, content });
   };
 
   const getOtherUser = (conv) => {
@@ -115,6 +157,130 @@ export default function Chat() {
       name: isUserOne ? conv.participant_two_name : conv.participant_one_name,
     };
   };
+
+  // ── Voice Recording ───────────────────────────────────
+  const sendAudioMessage = useCallback(async (blob) => {
+    const conv = activeConvRef.current;
+    const sock = socketRef.current;
+    if (!conv || !sock) return;
+    const formData = new FormData();
+    formData.append("file", blob, "voice.webm");
+    try {
+      const res = await client.post("/upload/audio", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      sock.emit("send_message", {
+        conversation_id: conv.id,
+        content: res.data.url,
+      });
+      scrollToBottom();
+    } catch {
+      toast.error(t('error.generic'));
+    }
+  }, [toast, t, scrollToBottom]);
+
+  const startRecording = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error(t('chat.voiceNotSupported'));
+      return;
+    }
+    if (!activeConv) { toast.error(t('chat.selectConv')); return; }
+    recordingActiveConvRef.current = activeConv;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4";
+      const recorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        clearInterval(recordTimerRef.current);
+        setRecordingTime(0);
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
+        if (blob.size > 0) await sendAudioMessage(blob);
+      };
+      recorder.start(200);
+      setRecording(true);
+      let sec = 0;
+      recordTimerRef.current = setInterval(() => { sec++; setRecordingTime(sec); }, 1000);
+    } catch {
+      toast.error(t('chat.voiceNotSupported'));
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    setRecording(false);
+  };
+
+  const formatTime = (sec) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  };
+
+  // ── Audio Playback ────────────────────────────────────
+  const toggleAudio = (url) => {
+    if (playingAudio === url) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      setPlayingAudio(null);
+    } else {
+      if (audioRef.current) audioRef.current.pause();
+      const audio = new Audio(url);
+      audio.onended = () => { setPlayingAudio(null); audioRef.current = null; };
+      audio.play().catch(() => {});
+      audioRef.current = audio;
+      setPlayingAudio(url);
+    }
+  };
+
+  // ── Speech-to-Text (fixed: no duplicate insertion) ───
+  const LANG_MAP = { en: "en-US", te: "te-IN", hi: "hi-IN", ta: "ta-IN", kn: "kn-IN", ml: "ml-IN" };
+
+  const startListening = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error(t('chat.speechNotSupported'));
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = LANG_MAP[lang] || "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    speechFinalRef.current = "";
+    recognition.onresult = (event) => {
+      const transcript = event.results[event.results.length - 1][0].transcript;
+      const isFinal = event.results[event.results.length - 1].isFinal;
+      if (isFinal) {
+        setMsgInput(prev => prev + transcript);
+      } else {
+        setMsgInput(prev => prev + transcript);
+      }
+    };
+    recognition.onerror = () => { setListening(false); };
+    recognition.onend = () => { setListening(false); };
+    recognition.start();
+    recognitionRef.current = recognition;
+    setListening(true);
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setListening(false);
+  };
+
+  const isVoiceMsg = (content) => content.startsWith("/uploads/audio/");
 
   const filteredConvs = conversations.filter(c => {
     const other = getOtherUser(c);
@@ -128,12 +294,12 @@ export default function Chat() {
         {/* Sidebar */}
         <div className={`w-full md:w-80 border-r border-slate-100 flex flex-col ${activeConv ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-4 border-b border-slate-100">
-            <h2 className="font-bold text-slate-900 text-lg mb-4">Messages</h2>
+            <h2 className="font-bold text-slate-900 text-lg mb-4">{t('chat.title')}</h2>
             <div className="relative">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search chats..."
+                placeholder={t('chat.search')}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="input-field pl-9 bg-slate-50"
@@ -145,7 +311,7 @@ export default function Chat() {
             {loading ? (
               <div className="flex justify-center p-8"><Loader2 className="animate-spin text-green-500" /></div>
             ) : filteredConvs.length === 0 ? (
-              <div className="text-center p-8 text-slate-500 text-sm">No conversations found</div>
+              <div className="text-center p-8 text-slate-500 text-sm">{t('chat.noConvs')}</div>
             ) : (
               <div className="divide-y divide-slate-50">
                 {filteredConvs.map(conv => {
@@ -165,7 +331,7 @@ export default function Chat() {
                           <p className={`font-semibold text-sm truncate ${isActive ? 'text-green-700' : 'text-slate-900'}`}>{other?.name || "User"}</p>
                           <span className="text-[10px] text-slate-400">{conv.updated_at ? format(parseISO(conv.updated_at), "MMM d") : ""}</span>
                         </div>
-                        <p className="text-xs text-slate-500 truncate">{conv.last_message || "Tap to view messages"}</p>
+                        <p className="text-xs text-slate-500 truncate">{conv.last_message || t('chat.noMessages')}</p>
                       </div>
                     </button>
                   );
@@ -192,7 +358,7 @@ export default function Chat() {
                 </div>
                 <div>
                   <p className="font-bold text-slate-900 text-sm leading-tight">{getOtherUser(activeConv)?.name || "User"}</p>
-                  <p className="text-xs text-green-600 font-medium leading-tight">Online</p>
+                  <p className="text-xs text-green-600 font-medium leading-tight">{t('chat.online')}</p>
                 </div>
               </div>
 
@@ -203,8 +369,8 @@ export default function Chat() {
                     <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
                       <User size={24} className="text-green-600" />
                     </div>
-                    <p className="text-slate-900 font-bold mb-1">Say hello to {getOtherUser(activeConv)?.name?.split(" ")[0]}!</p>
-                    <p className="text-slate-500 text-sm">Discuss crop details, pricing, and delivery.</p>
+                    <p className="text-slate-900 font-bold mb-1">{t('chat.sayHello', { name: getOtherUser(activeConv)?.name?.split(" ")[0] })}</p>
+                    <p className="text-slate-500 text-sm">{t('chat.discuss')}</p>
                   </div>
                 ) : (
                   messages.map((msg, i) => {
@@ -225,7 +391,24 @@ export default function Chat() {
                                 ? 'bg-green-600 text-white rounded-br-sm' 
                                 : 'bg-white border border-slate-200 text-slate-800 rounded-bl-sm'
                             }`}>
-                              {msg.content}
+                              {isVoiceMsg(msg.content) ? (
+                                <button
+                                  onClick={() => toggleAudio(msg.content)}
+                                  className="flex items-center gap-2 py-1"
+                                >
+                                  {playingAudio === msg.content ? (
+                                    <Pause size={18} className={isMe ? "text-white" : "text-green-600"} />
+                                  ) : (
+                                    <Play size={18} className={isMe ? "text-white" : "text-green-600"} />
+                                  )}
+                                  <div className="flex items-center gap-1">
+                                    <Volume2 size={14} className={isMe ? "text-white/70" : "text-slate-400"} />
+                                    <span className={`text-xs ${isMe ? "text-white/80" : "text-slate-500"}`}>{t('chat.voiceMsg')}</span>
+                                  </div>
+                                </button>
+                              ) : (
+                                msg.content
+                              )}
                             </div>
                             <span className={`text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity ${isMe ? 'text-right mr-1' : 'ml-1'}`}>
                               {formatMsgTime(msg.created_at)}
@@ -241,22 +424,54 @@ export default function Chat() {
 
               {/* Input Area */}
               <div className="p-4 bg-white border-t border-slate-100">
-                <form onSubmit={handleSend} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={msgInput}
-                    onChange={e => setMsgInput(e.target.value)}
-                    placeholder="Type your message..."
-                    className="flex-1 bg-slate-50 border border-slate-200 text-sm rounded-full px-5 py-3 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!msgInput.trim() || sending}
-                    className="w-12 h-12 rounded-full bg-green-600 hover:bg-green-700 text-white flex items-center justify-center flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {sending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} className="ml-1" />}
-                  </button>
-                </form>
+                {recording ? (
+                  <div className="flex items-center gap-3 bg-red-50 rounded-full px-5 py-2.5">
+                    <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                    <span className="text-sm font-semibold text-red-600">{t('chat.recording')}</span>
+                    <span className="text-sm font-mono text-red-500">{formatTime(recordingTime)}</span>
+                    <div className="flex-1" />
+                    <button
+                      type="button"
+                      onClick={stopRecording}
+                      className="w-10 h-10 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center transition-colors"
+                    >
+                      <Square size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSend} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={msgInput}
+                      onChange={e => setMsgInput(e.target.value)}
+                      placeholder={t('chat.placeholder')}
+                      className="flex-1 bg-slate-50 border border-slate-200 text-sm rounded-full px-5 py-3 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={recording ? stopRecording : startRecording}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${recording ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                      title={t('chat.voiceMsg')}
+                    >
+                      <Mic size={18} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={listening ? stopListening : startListening}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${listening ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                      title={t('chat.speechToText')}
+                    >
+                      {listening ? <Loader2 size={16} className="animate-spin" /> : <Volume2 size={18} />}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={!msgInput.trim()}
+                      className="w-12 h-12 rounded-full bg-green-600 hover:bg-green-700 text-white flex items-center justify-center flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Send size={18} className="ml-1" />
+                    </button>
+                  </form>
+                )}
               </div>
             </>
           ) : (
@@ -264,8 +479,8 @@ export default function Chat() {
               <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6">
                 <Send size={32} className="text-slate-300 ml-1" />
               </div>
-              <h2 className="text-xl font-bold text-slate-900 mb-2">Your Messages</h2>
-              <p className="text-slate-500 max-w-xs">Select a conversation from the sidebar or start a new chat from the marketplace.</p>
+              <h2 className="text-xl font-bold text-slate-900 mb-2">{t('chat.yourMessages')}</h2>
+              <p className="text-slate-500 max-w-xs">{t('chat.selectConv')}</p>
             </div>
           )}
         </div>

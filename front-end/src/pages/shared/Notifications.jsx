@@ -1,5 +1,6 @@
 import { CheckCircle2, CheckSquare } from "lucide-react";
 import { useNotifications } from "../../context/NotificationContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { format, parseISO, isToday, isYesterday } from "date-fns";
 import EmptyState from "../../components/ui/EmptyState";
 import { SkeletonCard } from "../../components/ui/Skeleton";
@@ -13,18 +14,19 @@ function formatNotifTime(iso) {
 }
 
 export default function Notifications() {
+  const { t } = useLanguage();
   const { notifications, loading, markRead, markAllRead, unreadCount } = useNotifications();
 
   return (
     <div className="page-enter max-w-4xl mx-auto space-y-6">
       <div className="page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="page-title">Notifications</h1>
-          <p className="page-subtitle">Stay updated on orders, requests, and platform alerts</p>
+          <h1 className="page-title">{t('notifications.title')}</h1>
+          <p className="page-subtitle">{t('notifications.title')}</p>
         </div>
         {unreadCount > 0 && (
           <button onClick={markAllRead} className="btn btn-secondary btn-sm">
-            <CheckSquare size={14} /> Mark all as read
+            <CheckSquare size={14} /> {t('notifications.markAllRead')}
           </button>
         )}
       </div>
@@ -37,8 +39,8 @@ export default function Notifications() {
         <div className="card">
           <EmptyState
             type="notifications"
-            title="All caught up!"
-            description="You don't have any notifications right now."
+            title={t('notifications.empty')}
+            description={t('notifications.empty')}
           />
         </div>
       ) : (
@@ -68,7 +70,7 @@ export default function Notifications() {
                         onClick={() => markRead(notif.id)}
                         className="text-blue-600 hover:text-blue-800 font-semibold transition-colors"
                       >
-                        Mark as read
+                        {t('notifications.markRead')}
                       </button>
                     )}
                   </p>

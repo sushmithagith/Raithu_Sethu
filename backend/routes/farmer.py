@@ -14,6 +14,15 @@ router = APIRouter()
 @router.post("/crops", status_code=status.HTTP_201_CREATED)
 async def create_crop(body: CropCreate, current_user: dict = Depends(require_farmer)):
     supabase = get_supabase()
+
+    # Validate expiry_date > harvest_date
+    if body.harvest_date and body.expiry_date:
+        if body.expiry_date <= body.harvest_date:
+            raise HTTPException(
+                status_code=400,
+                detail="Expiry date must be greater than harvest date",
+            )
+
     crop = {
         "id": str(uuid.uuid4()),
         "farmer_id": current_user["sub"],
@@ -68,6 +77,23 @@ async def update_crop(crop_id: str, body: CropUpdate, current_user: dict = Depen
         raise HTTPException(status_code=404, detail="Crop not found")
 
     updates = body.model_dump(exclude_none=True)
+
+    # Validate expiry_date > harvest_date on update
+    harvest = body.harvest_date if body.harvest_date else (
+        existing.data[0].get("harvest_date") if existing.data else None
+    )
+    expiry = body.expiry_date if body.expiry_date else (
+        existing.data[0].get("expiry_date") if existing.data else None
+    )
+    if harvest and expiry:
+        from datetime import datetime
+        h = harvest if isinstance(harvest, datetime) else datetime.fromisoformat(harvest)
+        e = expiry if isinstance(expiry, datetime) else datetime.fromisoformat(expiry)
+        if e <= h:
+            raise HTTPException(
+                status_code=400,
+                detail="Expiry date must be greater than harvest date",
+            )
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
 

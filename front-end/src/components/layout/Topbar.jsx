@@ -3,10 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { Bell, Menu, Search, ChevronDown, LogOut, User, Leaf } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useNotifications } from "../../context/NotificationContext";
+import { useLanguage } from "../../context/LanguageContext";
+import LanguageSwitcher from "../LanguageSwitcher";
 
 export default function Topbar({ setMobileOpen, pageTitle }) {
   const { user, role, logout } = useAuth();
   const { unreadCount } = useNotifications();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
@@ -46,6 +49,8 @@ export default function Topbar({ setMobileOpen, pageTitle }) {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
+        {/* Language */}
+        <LanguageSwitcher variant="topbar" />
         {/* Notifications */}
         <Link
           to="/notifications"
@@ -91,7 +96,7 @@ export default function Topbar({ setMobileOpen, pageTitle }) {
                     className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                   >
                     <LogOut size={15} />
-                    Sign Out
+                    {t("nav.signOut")}
                   </button>
                 </div>
               </div>

@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Leaf, Mail, Lock, Eye, EyeOff, Sprout, ShoppingBag, User, Phone, MapPin, Building2, Ruler, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
 
 const CATEGORIES = ["Vegetables", "Fruits", "Grains", "Dairy", "Spices", "Pulses", "Others"];
 
@@ -16,6 +17,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
 
+  const { t } = useLanguage();
   const { register } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
@@ -55,10 +57,10 @@ export default function Register() {
         }),
       };
       const user = await register(role, payload);
-      toast.success(`Welcome to RaithuSethu, ${user.name?.split(" ")[0]}!`);
+      toast.success(t('auth.registerSuccess'));
       navigate(role === "farmer" ? "/farmer/dashboard" : "/buyer/marketplace", { replace: true });
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Registration failed. Please try again.");
+      toast.error(err?.response?.data?.detail || t('error.generic'));
     } finally {
       setLoading(false);
     }
@@ -124,12 +126,12 @@ export default function Register() {
 
           {step === 1 ? (
             <>
-              <h2 className="text-2xl font-bold text-slate-900 mb-1">Create your account</h2>
-              <p className="text-slate-500 text-sm mb-6">Join RaithuSethu as a farmer or buyer</p>
+              <h2 className="text-2xl font-bold text-slate-900 mb-1">{t('auth.register')}</h2>
+              <p className="text-slate-500 text-sm mb-6">{t('auth.register')}</p>
 
               {/* Role Selector */}
               <div className="grid grid-cols-2 gap-3 mb-6">
-                {[["farmer", Sprout, "Farmer", "Sell your crops"], ["buyer", ShoppingBag, "Buyer", "Source produce"]].map(([r, Icon, label, sub]) => (
+                {[["farmer", Sprout, t('role.farmer'), "Sell your crops"], ["buyer", ShoppingBag, t('role.buyer'), "Source produce"]].map(([r, Icon, label, sub]) => (
                   <button key={r} type="button" onClick={() => setRole(r)}
                     className={`p-4 rounded-xl border-2 text-left transition-all ${role === r ? "border-green-500 bg-green-50" : "border-slate-200 hover:border-slate-300"}`}>
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${role === r ? "bg-green-500" : "bg-slate-100"}`}>
@@ -143,58 +145,58 @@ export default function Register() {
 
               <form onSubmit={handleNext} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full Name <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('auth.name')} <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input type="text" value={form.name} onChange={set("name")} placeholder="Ramesh Kumar" className="input-field pl-9" required />
+                    <input type="text" value={form.name} onChange={set("name")} placeholder={t('auth.name')} className="input-field pl-9" required />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('auth.email')} <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" className="input-field pl-9" required />
+                    <input type="email" value={form.email} onChange={set("email")} placeholder={t('auth.email')} className="input-field pl-9" required />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Password <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('auth.password')} <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input type={showPw ? "text" : "password"} value={form.password} onChange={set("password")} placeholder="Min. 6 characters" className="input-field pl-9 pr-10" required minLength={6} />
+                    <input type={showPw ? "text" : "password"} value={form.password} onChange={set("password")} placeholder={t('auth.password')} className="input-field pl-9 pr-10" required minLength={6} />
                     <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                       {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
                 </div>
                 <button type="submit" className="btn btn-primary w-full btn-lg mt-2">
-                  Continue <ArrowRight size={16} />
+                  {t('common.submit')} <ArrowRight size={16} />
                 </button>
               </form>
             </>
           ) : (
             <>
-              <h2 className="text-2xl font-bold text-slate-900 mb-1">Complete your profile</h2>
-              <p className="text-slate-500 text-sm mb-6">{role === "farmer" ? "Tell us about your farm" : "Tell us about your business"}</p>
+              <h2 className="text-2xl font-bold text-slate-900 mb-1">{t('auth.register')}</h2>
+              <p className="text-slate-500 text-sm mb-6">{role === "farmer" ? t('role.farmer') : t('role.buyer')}</p>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Phone <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('auth.phone')} <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input type="tel" value={form.phone} onChange={set("phone")} placeholder="+91 98765 43210" className="input-field pl-9" required />
+                    <input type="tel" value={form.phone} onChange={set("phone")} placeholder={t('auth.phone')} className="input-field pl-9" required />
                   </div>
                 </div>
                 {role === "farmer" ? (
                   <>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Location / Village <span className="text-red-500">*</span></label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t('crop.location')} <span className="text-red-500">*</span></label>
                       <div className="relative">
                         <MapPin size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input type="text" value={form.location} onChange={set("location")} placeholder="e.g. Guntur, Andhra Pradesh" className="input-field pl-9" required />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Farm Size (acres) <span className="text-slate-400 font-normal text-xs">optional</span></label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Farm Size (acres) <span className="text-slate-400 font-normal text-xs">{t('common.optional')}</span></label>
                       <div className="relative">
                         <Ruler size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input type="number" min="0" step="0.1" value={form.farm_size} onChange={set("farm_size")} placeholder="e.g. 5.5" className="input-field pl-9" />
@@ -203,7 +205,7 @@ export default function Register() {
                   </>
                 ) : (
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Company Name <span className="text-slate-400 font-normal text-xs">optional</span></label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Company Name <span className="text-slate-400 font-normal text-xs">{t('common.optional')}</span></label>
                     <div className="relative">
                       <Building2 size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input type="text" value={form.company_name} onChange={set("company_name")} placeholder="Your company or business" className="input-field pl-9" />
@@ -211,9 +213,9 @@ export default function Register() {
                   </div>
                 )}
                 <div className="flex gap-3 mt-2">
-                  <button type="button" onClick={() => setStep(1)} className="btn btn-secondary flex-1">Back</button>
+                  <button type="button" onClick={() => setStep(1)} className="btn btn-secondary flex-1">{t('common.back')}</button>
                   <button type="submit" disabled={loading} className="btn btn-primary flex-1">
-                    {loading ? "Creating..." : "Create Account"}
+                    {loading ? t('common.saving') : t('auth.register')}
                   </button>
                 </div>
               </form>
@@ -221,8 +223,8 @@ export default function Register() {
           )}
 
           <p className="text-center text-sm text-slate-500 mt-6">
-            Already have an account?{" "}
-            <Link to="/login" className="text-green-600 font-semibold hover:text-green-700">Sign in</Link>
+            {t('auth.alreadyAccount')}{" "}
+            <Link to="/login" className="text-green-600 font-semibold hover:text-green-700">{t('auth.login')}</Link>
           </p>
         </div>
       </div>

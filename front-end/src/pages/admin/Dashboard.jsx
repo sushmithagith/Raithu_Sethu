@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Users, Sprout, ShoppingBag, ShieldCheck, CheckCircle2, XCircle, UserX, UserCheck } from "lucide-react";
 import { adminApi } from "../../api/admin";
 import { useToast } from "../../context/ToastContext";
+import { useLanguage } from "../../context/LanguageContext";
 import StatCard from "../../components/ui/StatCard";
 import { SkeletonStatCards, SkeletonTable } from "../../components/ui/Skeleton";
 import { format, parseISO } from "date-fns";
@@ -11,6 +12,7 @@ export default function AdminDashboard() {
   const [pendingFarmers, setPendingFarmers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState({});
+  const { t } = useLanguage();
   const toast = useToast();
 
   const load = async () => {
@@ -23,7 +25,7 @@ export default function AdminDashboard() {
       setStats(statsRes.data);
       // Filter for unverified farmers
       setPendingFarmers((farmersRes.data || []).filter(f => !f.is_verified));
-    } catch { toast.error("Failed to load admin dashboard"); }
+    } catch { toast.error(t('error.generic')); }
     finally { setLoading(false); }
   };
 
@@ -34,31 +36,31 @@ export default function AdminDashboard() {
     try {
       if (isVerify) {
         await adminApi.verifyUser(id);
-        toast.success("Farmer verified successfully!");
+        toast.success(t('success.generic'));
       } else {
         await adminApi.suspendUser(id);
-        toast.success("Farmer suspended.");
+        toast.success(t('success.generic'));
       }
       load();
-    } catch { toast.error("Action failed"); }
+    } catch { toast.error(t('error.generic')); }
     finally { setActionLoading(a => ({ ...a, [id]: false })); }
   };
 
   return (
     <div className="page-enter space-y-6">
       <div className="page-header">
-        <h1 className="page-title">Admin Dashboard</h1>
-        <p className="page-subtitle">Platform overview and pending verifications</p>
+        <h1 className="page-title">{t('admin.dashboard.title')}</h1>
+        <p className="page-subtitle">{t('admin.dashboard.title')}</p>
       </div>
 
       {loading && !stats ? (
         <SkeletonStatCards count={4} />
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Total Farmers" value={stats?.total_farmers || 0} icon={Sprout} iconBg="bg-green-50" iconColor="text-green-600" delay={0} />
-          <StatCard title="Total Buyers" value={stats?.total_buyers || 0} icon={ShoppingBag} iconBg="bg-blue-50" iconColor="text-blue-600" delay={80} />
+          <StatCard title={t('admin.dashboard.totalFarmers')} value={stats?.total_farmers || 0} icon={Sprout} iconBg="bg-green-50" iconColor="text-green-600" delay={0} />
+          <StatCard title={t('admin.dashboard.totalBuyers')} value={stats?.total_buyers || 0} icon={ShoppingBag} iconBg="bg-blue-50" iconColor="text-blue-600" delay={80} />
           <StatCard title="Pending Verifications" value={stats?.unverified_farmers || pendingFarmers.length} icon={ShieldCheck} iconBg="bg-amber-50" iconColor="text-amber-600" delay={160} />
-          <StatCard title="Platform Transactions" value={stats?.total_orders || 0} icon={CheckCircle2} iconBg="bg-purple-50" iconColor="text-purple-600" delay={240} />
+          <StatCard title={t('admin.dashboard.totalTransactions')} value={stats?.total_orders || 0} icon={CheckCircle2} iconBg="bg-purple-50" iconColor="text-purple-600" delay={240} />
         </div>
       )}
 
@@ -75,20 +77,20 @@ export default function AdminDashboard() {
         ) : pendingFarmers.length === 0 ? (
           <div className="p-10 text-center">
             <ShieldCheck size={32} className="text-green-300 mx-auto mb-3" />
-            <p className="text-slate-500 font-medium">All farmers are verified!</p>
-            <p className="text-xs text-slate-400 mt-1">No pending verifications at the moment.</p>
+            <p className="text-slate-500 font-medium">{t('success.generic')}</p>
+            <p className="text-xs text-slate-400 mt-1">{t('common.noData')}</p>
           </div>
         ) : (
           <div className="table-wrapper">
             <table className="w-full text-sm">
               <thead className="table-header">
                 <tr className="text-xs text-slate-500 uppercase tracking-wider">
-                  <th className="text-left px-5 py-3 font-semibold">Farmer</th>
+                  <th className="text-left px-5 py-3 font-semibold">{t('role.farmer')}</th>
                   <th className="text-left px-4 py-3 font-semibold">Contact</th>
-                  <th className="text-left px-4 py-3 font-semibold">Location</th>
+                  <th className="text-left px-4 py-3 font-semibold">{t('crop.location')}</th>
                   <th className="text-left px-4 py-3 font-semibold">Farm Size</th>
-                  <th className="text-left px-4 py-3 font-semibold">Registered</th>
-                  <th className="text-left px-4 py-3 font-semibold">Actions</th>
+                  <th className="text-left px-4 py-3 font-semibold">{t('crop.harvestDate')}</th>
+                  <th className="text-left px-4 py-3 font-semibold">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -118,7 +120,7 @@ export default function AdminDashboard() {
                           disabled={actionLoading[farmer.id]}
                           className="btn btn-primary btn-sm"
                         >
-                          <UserCheck size={14} /> Verify
+                          <UserCheck size={14} /> {t('common.confirm')}
                         </button>
                         <button
                           onClick={() => handleVerify(farmer.id, false)}
