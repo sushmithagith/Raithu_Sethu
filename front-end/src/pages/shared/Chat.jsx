@@ -34,6 +34,7 @@ export default function Chat() {
   const [msgInput, setMsgInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [socketError, setSocketError] = useState(null);
 
   // Voice recording
   const [recording, setRecording] = useState(false);
@@ -125,14 +126,36 @@ export default function Chat() {
       });
     };
 
+    const handleError = (data) => {
+      const msg = data?.message || t('error.generic');
+      setSocketError(msg);
+      toast.error(msg);
+      setTimeout(() => setSocketError(null), 4000);
+    };
+
     socket.on("receive_message", handleReceiveMessage);
-    return () => socket.off("receive_message", handleReceiveMessage);
-  }, [socket, scrollToBottom]);
+    socket.on("error", handleError);
+    socket.on("connect", () => setSocketError(null));
+    socket.on("disconnect", () => setSocketError("Connection lost. Trying to reconnect..."));
+    socket.on("connect_error", () => setSocketError("Cannot connect to chat server. Check your connection."));
+    return () => {
+      socket.off("receive_message", handleReceiveMessage);
+      socket.off("error", handleError);
+      socket.off("connect");
+      socket.off("disconnect");
+      socket.off("connect_error");
+    };
+  }, [socket, scrollToBottom, toast, t]);
 
   const handleSend = (e) => {
     e.preventDefault();
-    if (!msgInput.trim() || !activeConv || !socket) return;
-    const content = msgInput.trim();
+    const trimmed = msgInput.trim();
+    if (!trimmed || !activeConv) return;
+    if (!socket) {
+      toast.error("Not connected to chat server. Please wait or refresh.");
+      return;
+    }
+    const content = trimmed;
 
     // Optimistic UI update
     const optimisticMsg = {
@@ -162,13 +185,26 @@ export default function Chat() {
   const sendAudioMessage = useCallback(async (blob) => {
     const conv = activeConvRef.current;
     const sock = socketRef.current;
-    if (!conv || !sock) return;
+    if (!conv) return;
+    if (!sock) {
+      toast.error("Not connected to chat server. Please wait or refresh.");
+      return;
+    }
     const formData = new FormData();
     formData.append("file", blob, "voice.webm");
     try {
       const res = await client.post("/upload/audio", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+      const optimisticMsg = {
+        id: nextMsgId(),
+        conversation_id: conv.id,
+        sender_id: user.id,
+        content: res.data.url,
+        is_read: false,
+        created_at: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, optimisticMsg]);
       sock.emit("send_message", {
         conversation_id: conv.id,
         content: res.data.url,
@@ -177,7 +213,7 @@ export default function Chat() {
     } catch {
       toast.error(t('error.generic'));
     }
-  }, [toast, t, scrollToBottom]);
+  }, [toast, t, scrollToBottom, user.id]);
 
   const startRecording = async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -361,6 +397,13 @@ export default function Chat() {
                   <p className="text-xs text-green-600 font-medium leading-tight">{t('chat.online')}</p>
                 </div>
               </div>
+
+              {/* Connection status banner */}
+              {socketError && (
+                <div className="px-4 py-2 bg-red-50 border-b border-red-100 text-red-700 text-xs font-medium text-center">
+                  {socketError}
+                </div>
+              )}
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">

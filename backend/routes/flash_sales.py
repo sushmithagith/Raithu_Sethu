@@ -18,9 +18,8 @@ async def list_flash_sales(active_only: bool = Query(True, description="Only sho
         "*, crops(id, name, category, price_per_unit, unit, quantity, location, farmer_id, "
         "users!farmer_id(name, location))"
     )
-    if active_only:
-        now = datetime.now(timezone.utc).isoformat()
-        query = query.eq("is_active", True).gte("end_time", now)
+    now = datetime.now(timezone.utc).isoformat()
+    query = query.eq("is_active", True).gte("end_time", now)
 
     result = query.order("created_at", desc=True).execute()
     return result.data or []

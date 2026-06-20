@@ -53,58 +53,62 @@ async def send_message(sid, data):
     """
     Expected data: { conversation_id, content }
     """
-    session = await sio.get_session(sid)
-    sender_id = session.get("user_id")
+    try:
+        session = await sio.get_session(sid)
+        sender_id = session.get("user_id")
 
-    conversation_id = data.get("conversation_id")
-    content = data.get("content", "").strip()
+        conversation_id = data.get("conversation_id")
+        content = data.get("content", "").strip()
 
-    if not conversation_id or not content:
-        await sio.emit("error", {"message": "conversation_id and content are required"}, to=sid)
-        return
+        if not conversation_id or not content:
+            await sio.emit("error", {"message": "conversation_id and content are required"}, to=sid)
+            return
 
-    supabase = get_supabase()
+        supabase = get_supabase()
 
-    # Validate conversation
-    conv = supabase.table("conversations").select("*").eq("id", conversation_id).execute()
-    if not conv.data:
-        await sio.emit("error", {"message": "Conversation not found"}, to=sid)
-        return
+        # Validate conversation
+        conv = supabase.table("conversations").select("*").eq("id", conversation_id).execute()
+        if not conv.data:
+            await sio.emit("error", {"message": "Conversation not found"}, to=sid)
+            return
 
-    c = conv.data[0]
-    if c["participant_one_id"] != sender_id and c["participant_two_id"] != sender_id:
-        await sio.emit("error", {"message": "Access denied"}, to=sid)
-        return
+        c = conv.data[0]
+        if c["participant_one_id"] != sender_id and c["participant_two_id"] != sender_id:
+            await sio.emit("error", {"message": "Access denied"}, to=sid)
+            return
 
-    # Determine recipient
-    recipient_id = (
-        c["participant_two_id"] if c["participant_one_id"] == sender_id else c["participant_one_id"]
-    )
+        # Determine recipient
+        recipient_id = (
+            c["participant_two_id"] if c["participant_one_id"] == sender_id else c["participant_one_id"]
+        )
 
-    # Persist message
-    message = {
-        "id": str(uuid.uuid4()),
-        "conversation_id": conversation_id,
-        "sender_id": sender_id,
-        "content": content,
-        "is_read": False,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    supabase.table("messages").insert(message).execute()
+        # Persist message
+        message = {
+            "id": str(uuid.uuid4()),
+            "conversation_id": conversation_id,
+            "sender_id": sender_id,
+            "content": content,
+            "is_read": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        supabase.table("messages").insert(message).execute()
 
-    # Update conversation last_message
-    supabase.table("conversations").update({
-        "last_message": content,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }).eq("id", conversation_id).execute()
+        # Update conversation last_message
+        supabase.table("conversations").update({
+            "last_message": content,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", conversation_id).execute()
 
-    # Emit to sender (confirmation)
-    await sio.emit("receive_message", message, to=sid)
+        # Emit to sender (confirmation)
+        await sio.emit("receive_message", message, to=sid)
 
-    # Emit to recipient if online
-    recipient_sid = connected_users.get(recipient_id)
-    if recipient_sid:
-        await sio.emit("receive_message", message, to=recipient_sid)
+        # Emit to recipient if online
+        recipient_sid = connected_users.get(recipient_id)
+        if recipient_sid:
+            await sio.emit("receive_message", message, to=recipient_sid)
+    except Exception as e:
+        print(f"[Socket] Error in send_message: {e}")
+        await sio.emit("error", {"message": "Failed to send message. Please try again."}, to=sid)
 
 
 @sio.event

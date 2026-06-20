@@ -7,6 +7,7 @@ import { LanguageProvider } from "./context/LanguageContext";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import PageLayout from "./components/layout/PageLayout";
 
+import SplashScreen from "./pages/SplashScreen";
 import Landing from "./pages/Landing";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
@@ -38,7 +39,8 @@ import NotFound from "./pages/NotFound";
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Landing />} />
+      <Route path="/" element={<SplashScreen />} />
+      <Route path="/home" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
