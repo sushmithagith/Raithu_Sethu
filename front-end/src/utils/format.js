@@ -1,3 +1,17 @@
+// Backend file routes (e.g. crop images, voice messages) return paths like
+// "/uploads/crops/xyz.jpg". In local dev these resolve fine via the Vite
+// proxy, but once the frontend and backend are deployed to different
+// domains (Vercel + Render), a bare "/uploads/..." path resolves against
+// the frontend's own origin and 404s. This prefixes such paths with the
+// backend's origin when VITE_API_URL is set, and leaves absolute URLs
+// (e.g. https://...) and local dev paths untouched.
+export function resolveMediaUrl(path) {
+  if (!path) return path;
+  if (/^https?:\/\//i.test(path)) return path;
+  const base = import.meta.env.VITE_API_URL || "";
+  return path.startsWith("/") ? `${base}${path}` : `${base}/${path}`;
+}
+
 export function formatCurrency(value) {
   const n = Number(value);
   if (Number.isNaN(n)) return "₹0";

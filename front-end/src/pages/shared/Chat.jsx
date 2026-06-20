@@ -7,6 +7,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import client from "../../api/client";
+import { resolveMediaUrl } from "../../utils/format";
 import { format, parseISO, isToday, isYesterday } from "date-fns";
 
 let msgIdCounter = 0;
@@ -279,7 +280,7 @@ export default function Chat() {
       setPlayingAudio(null);
     } else {
       if (audioRef.current) audioRef.current.pause();
-      const audio = new Audio(url);
+      const audio = new Audio(resolveMediaUrl(url));
       audio.onended = () => { setPlayingAudio(null); audioRef.current = null; };
       audio.play().catch(() => {});
       audioRef.current = audio;

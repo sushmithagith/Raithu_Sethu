@@ -5,6 +5,7 @@ import { flashSalesApi } from "../../api/resources";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { translateCropName } from "../../utils/cropTranslations";
+import { resolveMediaUrl } from "../../utils/format";
 import Modal, { ConfirmModal } from "../../components/ui/Modal";
 import { StatusBadge, CategoryBadge } from "../../components/ui/Badge";
 import { SkeletonTable } from "../../components/ui/Skeleton";
@@ -224,7 +225,7 @@ export default function MyCrops() {
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2.5">
                       {crop.images?.[0] ? (
-                        <img src={crop.images[0]} alt="" className="w-9 h-9 rounded-xl object-cover" />
+                        <img src={resolveMediaUrl(crop.images[0])} alt="" className="w-9 h-9 rounded-xl object-cover" />
                       ) : (
                         <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
                           <Sprout size={15} className="text-green-600" />
@@ -329,7 +330,7 @@ export default function MyCrops() {
               <div className="flex flex-wrap gap-2 mt-2">
                 {form.images.map((url, i) => (
                   <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 group">
-                    <img src={url} alt={t('crop.noImage')} className="w-full h-full object-cover" />
+                    <img src={resolveMediaUrl(url)} alt={t('crop.noImage')} className="w-full h-full object-cover" />
                     <button type="button" onClick={() => removeImage(i)} className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition">
                       <X size={12} />
                     </button>

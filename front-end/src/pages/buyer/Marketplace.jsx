@@ -6,6 +6,7 @@ import { flashSalesApi } from "../../api/resources";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { translateCropName } from "../../utils/cropTranslations";
+import { resolveMediaUrl } from "../../utils/format";
 import Modal from "../../components/ui/Modal";
 import { StatusBadge, CategoryBadge } from "../../components/ui/Badge";
 import { SkeletonCropCards } from "../../components/ui/Skeleton";
@@ -148,7 +149,7 @@ export default function Marketplace() {
               {/* Image / Header area */}
               <div className="relative h-44 bg-slate-100 flex items-center justify-center overflow-hidden">
                 {crop.images && crop.images.length > 0 ? (
-                  <img src={crop.images[0]} alt={crop.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={resolveMediaUrl(crop.images[0])} alt={crop.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 ) : (
                   <Sprout size={48} className="text-green-200 group-hover:scale-110 transition-transform duration-500" />
                 )}
