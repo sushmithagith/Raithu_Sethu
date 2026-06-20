@@ -3,7 +3,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Sprout, ShoppingBag, FileText, ClipboardList,
   BookOpen, Zap, MessageCircle, Bell, LogOut,
-  Users, BarChart3, Store, X, Leaf,
+  Users, BarChart3, Store, X,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -75,9 +75,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 py-5 border-b border-white/8">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-lg shadow-green-900/40 flex-shrink-0">
-          <Leaf size={18} className="text-white" />
-        </div>
+        <img src="/logo.jpeg" alt="Raithu Sethu" className="w-9 h-9 rounded-xl object-cover shadow-lg shadow-green-900/40 flex-shrink-0" />
         <div>
           <span className="text-white font-bold text-lg leading-none tracking-tight">RaithuSethu</span>
           <p className="text-slate-400 text-xs mt-0.5">Farm-to-Market</p>

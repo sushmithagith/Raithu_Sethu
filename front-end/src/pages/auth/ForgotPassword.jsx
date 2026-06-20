@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Leaf, Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { authApi } from "../../api/auth";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -31,9 +31,7 @@ export default function ForgotPassword() {
       <div className="w-full max-w-md animate-fade-in">
         {/* Logo */}
         <div className="flex items-center gap-2.5 mb-10">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-md">
-            <Leaf size={18} className="text-white" />
-          </div>
+          <img src="/logo.jpeg" alt="Raithu Sethu" className="w-9 h-9 rounded-xl object-cover shadow-md" />
           <span className="font-bold text-xl text-slate-800">RaithuSethu</span>
         </div>
 

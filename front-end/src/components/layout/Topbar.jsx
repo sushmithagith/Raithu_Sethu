@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, Menu, Search, ChevronDown, LogOut, User, Leaf } from "lucide-react";
+import { Bell, Menu, Search, ChevronDown, LogOut, User } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useNotifications } from "../../context/NotificationContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -37,9 +37,7 @@ export default function Topbar({ setMobileOpen, pageTitle }) {
         </button>
         {/* Mobile Logo */}
         <Link to={getDashboardLink()} className="md:hidden flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
-            <Leaf size={14} className="text-white" />
-          </div>
+          <img src="/logo.jpeg" alt="Raithu Sethu" className="w-7 h-7 rounded-lg object-cover" />
           <span className="font-bold text-slate-800 text-sm">RaithuSethu</span>
         </Link>
         {pageTitle && (

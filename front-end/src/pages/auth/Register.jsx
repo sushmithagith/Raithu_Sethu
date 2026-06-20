@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Leaf, Mail, Lock, Eye, EyeOff, Sprout, ShoppingBag, User, Phone, MapPin, Building2, Ruler, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Sprout, ShoppingBag, User, Phone, MapPin, Building2, Ruler, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -90,9 +90,7 @@ export default function Register() {
         </div>
 
         <div className="relative z-10 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-lg">
-            <Leaf size={20} className="text-white" />
-          </div>
+          <img src="/logo.jpeg" alt="Raithu Sethu" className="w-10 h-10 rounded-xl object-cover shadow-lg" />
           <span className="text-white font-bold text-xl tracking-tight">RaithuSethu</span>
         </div>
         <div className="relative z-10">
@@ -110,9 +108,7 @@ export default function Register() {
       <div className="flex-1 flex items-center justify-center px-4 py-12 bg-white">
         <div className="w-full max-w-md animate-fade-in">
           <div className="lg:hidden flex items-center gap-2.5 mb-8">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
-              <Leaf size={18} className="text-white" />
-            </div>
+            <img src="/logo.jpeg" alt="Raithu Sethu" className="w-9 h-9 rounded-xl object-cover" />
             <span className="font-bold text-xl text-slate-800">RaithuSethu</span>
           </div>
 

@@ -182,7 +182,7 @@ export default function Chat() {
   };
 
   // ── Voice Recording ───────────────────────────────────
-  const sendAudioMessage = useCallback(async (blob) => {
+  const sendAudioMessage = useCallback(async (blob, mimeType) => {
     const conv = activeConvRef.current;
     const sock = socketRef.current;
     if (!conv) return;
@@ -190,12 +190,20 @@ export default function Chat() {
       toast.error("Not connected to chat server. Please wait or refresh.");
       return;
     }
+    const extByMime = {
+      "audio/webm": "webm",
+      "audio/mp4": "mp4",
+      "audio/mpeg": "mp3",
+      "audio/ogg": "ogg",
+      "audio/wav": "wav",
+      "audio/x-m4a": "m4a",
+    };
+    const baseMime = (mimeType || blob.type || "").split(";")[0].trim();
+    const ext = extByMime[baseMime] || "webm";
     const formData = new FormData();
-    formData.append("file", blob, "voice.webm");
+    formData.append("file", blob, `voice.${ext}`);
     try {
-      const res = await client.post("/upload/audio", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await client.post("/upload/audio", formData);
       const optimisticMsg = {
         id: nextMsgId(),
         conversation_id: conv.id,
@@ -210,8 +218,9 @@ export default function Chat() {
         content: res.data.url,
       });
       scrollToBottom();
-    } catch {
-      toast.error(t('error.generic'));
+    } catch (err) {
+      const serverMsg = err?.response?.data?.detail;
+      toast.error(typeof serverMsg === "string" ? serverMsg : t('error.generic'));
     }
   }, [toast, t, scrollToBottom, user.id]);
 
@@ -236,7 +245,7 @@ export default function Chat() {
         clearInterval(recordTimerRef.current);
         setRecordingTime(0);
         const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
-        if (blob.size > 0) await sendAudioMessage(blob);
+        if (blob.size > 0) await sendAudioMessage(blob, recorder.mimeType);
       };
       recorder.start(200);
       setRecording(true);

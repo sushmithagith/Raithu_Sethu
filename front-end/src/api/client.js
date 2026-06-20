@@ -10,6 +10,13 @@ client.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // When sending FormData (file uploads), the browser must set its own
+  // "multipart/form-data; boundary=..." header. The instance-level default
+  // of "application/json" above would otherwise stick around and break
+  // multipart parsing on the server (FastAPI returns 422).
+  if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+    delete config.headers["Content-Type"];
+  }
   return config;
 });
 

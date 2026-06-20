@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Leaf, ArrowRight, Sprout, ShoppingBag, Zap, MessageCircle,
+  ArrowRight, Sprout, ShoppingBag, Zap, MessageCircle,
   TrendingUp, Shield, Star, CheckCircle2, Users, Package, BarChart3,
   ChevronRight, Play, Globe2, Clock, Award,
 } from "lucide-react";
@@ -76,9 +76,7 @@ export default function Landing() {
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
           <Link to="/home" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-md">
-              <Leaf size={18} className="text-white" />
-            </div>
+            <img src="/logo.jpeg" alt="Raithu Sethu" className="w-9 h-9 rounded-xl object-cover shadow-md" />
             <span className="font-bold text-xl text-slate-800 tracking-tight">RaithuSethu</span>
           </Link>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
@@ -325,9 +323,7 @@ export default function Landing() {
       <footer className="bg-slate-900 py-10">
         <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
-              <Leaf size={14} className="text-white" />
-            </div>
+            <img src="/logo.jpeg" alt="Raithu Sethu" className="w-8 h-8 rounded-lg object-cover" />
             <span className="text-white font-bold">RaithuSethu</span>
           </div>
           <p className="text-slate-500 text-sm">© 2026 RaithuSethu. Reducing food waste, increasing farmer prosperity.</p>

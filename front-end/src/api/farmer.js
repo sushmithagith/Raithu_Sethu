@@ -17,8 +17,6 @@ export const farmerApi = {
   uploadImage: (file) => {
     const formData = new FormData();
     formData.append("file", file);
-    return client.post("/farmer/upload-image", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    return client.post("/farmer/upload-image", formData);
   },
 };
