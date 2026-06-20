@@ -19,7 +19,7 @@ export function SocketProvider({ children }) {
       return;
     }
 
-    const socket = io("/", {
+    const socket = io("https://raithu-sethu.onrender.com", {
       path: "/socket.io",
       auth: { token },
       transports: ["websocket", "polling"],
