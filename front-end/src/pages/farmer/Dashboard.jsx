@@ -102,7 +102,7 @@ export default function FarmerDashboard() {
           <StatCard title={t('farmer.dashboard.activeCrops')} value={activeCrops} icon={Sprout} iconBg="bg-green-50" iconColor="text-green-600" trendLabel="this month" delay={0} />
           <StatCard title={t('farmer.requests.pending')} value={pendingReqs} icon={ShoppingBag} iconBg="bg-amber-50" iconColor="text-amber-600" trendLabel="awaiting" delay={80} />
           <StatCard title={t('farmer.bookings.title')} value={bookings.length} icon={Package} iconBg="bg-blue-50" iconColor="text-blue-600" trendLabel="all time" delay={160} />
-          <StatCard title={t('common.price')} value={Math.round(totalRevenue)} prefix="₹" icon={TrendingUp} iconBg="bg-purple-50" iconColor="text-purple-600" trendLabel="completed" delay={240} />
+          <StatCard title="Total Earnings" value={Math.round(totalRevenue)} prefix="₹" icon={TrendingUp} iconBg="bg-purple-50" iconColor="text-purple-600" trendLabel="completed" delay={240} />
         </div>
       )}
 
